@@ -1,0 +1,1 @@
+{"movetype": "Drag", "gamemode": ["Custom", "True", "True", "True", "True", "0", "5", "unlimited"], "canvas_default_item_hover_time": "300", "default_cardsender_freeze_time": "600", "show_footer": "True", "show_header": "True", "continuous_points": "True", "card_back": "python_card_back", "canvas_color": "#103b0a", "larger_cards": "False"}
