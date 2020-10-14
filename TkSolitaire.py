@@ -294,6 +294,7 @@ class SolitareGameWindow(tk.Tk):
 class SolitareGameFrame(tk.Frame):
     def __init__(self, parent, **kwargs):
         tk.Frame.__init__(self, parent, **kwargs)
+
         self.bind_all("<Control-n>", self.new_game)
         self.bind_all("<Control-r>", self.restart_game)
         self.bind_all("<Control-d>", lambda event: self.stack_onclick("deal_card_button"))
@@ -329,10 +330,11 @@ class SolitareGameFrame(tk.Frame):
         self.job = None
         self.win = None
 
+        os.chdir(os.path.dirname(os.path.abspath(__file__)))
         try:
             self.load_settings()
         except:
-            with open((os.path.dirname(os.path.abspath(__file__))+"/resources/settings.json"), "w") as handle:
+            with open("resources/settings.json", "w") as handle:
                 handle.write(str(DEFAULT_SETTINGS).replace("'", '"'))
             self.load_settings()
 
@@ -344,8 +346,7 @@ class SolitareGameFrame(tk.Frame):
         self.create_widgets()
 
     def load_settings(self, ignore_scaled_cards_prefix=False):
-        settings = json.load(open(os.path.dirname(
-            os.path.abspath(__file__))+"/resources/settings.json"))
+        settings = json.load(open("resources/settings.json"))
         self.movetype = settings["movetype"]
         self.gamemode = settings["gamemode"]
 
@@ -374,8 +375,7 @@ class SolitareGameFrame(tk.Frame):
             else:
                 self.scaled_cards_prefix = ""
 
-        self.back_of_card_file = os.path.dirname(os.path.abspath(
-            __file__))+"/resources/"+self.scaled_cards_prefix+settings["card_back"]+".png"
+        self.back_of_card_file = os.path.join("resources", self.scaled_cards_prefix+settings["card_back"]+".png")
         self.card_back = settings["card_back"]
 
         if self.gamemode[0] == "Custom":
@@ -783,7 +783,6 @@ class SolitareGameFrame(tk.Frame):
         suits = ["clubs", "diamonds", "spades", "hearts"]
         ranks = ["ace", "2", "3", "4", "5", "6", "7",
                  "8", "9", "10", "jack", "queen", "king"]
-
         for suit in suits:
             for rank in ranks:
                 name_of_old_image = os.path.join(
@@ -832,8 +831,7 @@ class SolitareGameFrame(tk.Frame):
             for rank in ranks:
                 name_of_image = os.path.join(
                     "resources", card_dir, "{}_of_{}.png".format(rank, suit))
-                image = Image.open(os.path.dirname(
-                    os.path.abspath(__file__))+"/"+name_of_image)
+                image = Image.open(name_of_image)
                 self.cards.append("{}_of_{}".format(rank, suit))
                 self.dict_of_cards[("{}_of_{}".format(rank, suit))] = (
                     ImageTk.PhotoImage(image))
@@ -916,8 +914,7 @@ class SolitareGameFrame(tk.Frame):
         return self.canvas.create_polygon(points, **kwargs, smooth=True)
 
     def convert_pictures(self, url, main=True):
-        picture = Image.open(os.path.dirname(
-            os.path.abspath(__file__))+"/resources/"+url)
+        picture = Image.open(os.path.join("resources", url))
         picture = (ImageTk.PhotoImage(picture))
         if main:
             self.canvas.images.append(picture)
