@@ -14,7 +14,7 @@ TkSolitaire comes bundled with accessibility options, making it easier for the e
 
 ___
 **Installation:**
-Windows users can download the installer from the releases page. Alternatively, Linux and Windows users can also download the source code and run it with python.
+Windows users can download the installer from the releases page. Alternatively, Linux and Windows users can also download the source code and run it using python.
 TkSolitaire can be embedded into a Tkinter app:
 
 ```python
@@ -30,4 +30,4 @@ root.mainloop()
  
 ___        
 **Screenshots:**
-![Alt text](/resources/Screenshots/TkSolitaire-Ubuntu18-Screenshot.png?raw=true "Optional Title")
+![Alt text](/resources/Screenshots/TkSolitaire-Ubuntu18-Screenshot.png?raw=true "TkSolitaire")
