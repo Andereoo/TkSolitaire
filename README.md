@@ -17,15 +17,17 @@ ___
 Windows users can download the installer from the releases page. Alternatively, Linux and Windows users can also download the source code and run it with python.
 TkSolitaire can be embedded into a Tkinter app:
 
-    from TkSolitaire import SolitareGameFrame
-    import tkinter as tk
+```python
+from TkSolitaire import SolitareGameFrame
+import tkinter as tk
 
-    root = tk.Tk()
-    solitaire_frame = SolitareGameFrame(root)
-    solitaire_frame.pack(expand=True, fill="both")
+root = tk.Tk()
+solitaire_frame = SolitareGameFrame(root)
+solitaire_frame.pack(expand=True, fill="both")
 
-    root.mainloop()
-    
+root.mainloop()
+ ```
+ 
 ___        
 **Screenshots:**
 ![Alt text](/resources/Screenshots/TkSolitaire-Ubuntu18-Screenshot.png?raw=true "Optional Title")
