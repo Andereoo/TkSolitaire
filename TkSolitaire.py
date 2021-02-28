@@ -1937,10 +1937,12 @@ class SolitareGameFrame(tk.Frame):
                 lambda event="deal_card_button": self.stack_onclick(event))
 
     def on_draggable_card(self, event):
-        self.canvas.config(cursor="hand2")
+        if self.canvas["cursor"] != "fleur":
+            self.canvas.config(cursor="hand2")
 
     def leave_draggable_card(self, event):
-        self.canvas.config(cursor="")
+        if self.canvas["cursor"] != "fleur":
+            self.canvas.config(cursor="")
 
     def move_card(self, event):
         self.canvas.delete("available_card_rect")
@@ -2003,6 +2005,8 @@ class SolitareGameFrame(tk.Frame):
                     continue
 
     def drop_card(self, event):
+        if self.canvas["cursor"] == "fleur":
+            self.canvas.config(cursor="hand2")
         self.canvas.delete("available_card_rect")
         self.move_flag = False
         self.canvas.dtag("face_up", "moveable")
@@ -2347,6 +2351,7 @@ class SolitareGameFrame(tk.Frame):
                 self.canvas.find_overlapping(*self.card_stack_list))
 
             if (self.movetype == "Drag"):
+                self.canvas.config(cursor="fleur")
                 for card in self.card_stack_list:
                     card_tag = self.canvas.gettags(card)
                     if ("cardstack" in str(card_tag)):
