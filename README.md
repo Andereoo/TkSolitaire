@@ -2,7 +2,7 @@
 *An embeddable and accessable solitaire game for Tkinter and Python 3*
 
 ___
-TkSolitaire is a script that allows you to play a simple game of solitaire. It is written for Python 3 on Linux and Windows.
+TkSolitaire is a solitaire game application written in Tkinter. It is written for Python 3 on Linux and Windows. It should work on MacOS, but this platform hasn't been tested on.
 
 ___
 **Accessability:**
@@ -14,7 +14,7 @@ TkSolitaire comes bundled with accessibility options, making it easier for the e
 
 ___
 **Installation:**
-Windows users can download the installer from the releases page. Alternatively, Linux and Windows users can also download the source code and run it using python.
+Windows users can download the installer from the releases page. Alternatively, the TkSolitaire source code can also be downloaded and run using python.
 TkSolitaire can be embedded into a Tkinter app:
 
 ```python
