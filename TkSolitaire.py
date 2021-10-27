@@ -2351,7 +2351,8 @@ class SolitareGameFrame(tk.Frame):
                 self.canvas.find_overlapping(*self.card_stack_list))
 
             if (self.movetype == "Drag"):
-                self.canvas.config(cursor="fleur")
+                if event != "send_cards_to_ace":
+                    self.canvas.config(cursor="fleur")
                 for card in self.card_stack_list:
                     card_tag = self.canvas.gettags(card)
                     if ("cardstack" in str(card_tag)):
