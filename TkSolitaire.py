@@ -259,12 +259,23 @@ class ToolTip:
         label = tk.Label(tw, text="  "+self.text+"  ", justify=self.justify, background=self.background,
                          foreground=self.foreground, relief=self.relief, borderwidth=self.borderwidth, font=self.font)
         label.pack(ipadx=1)
-
+    
     def hidetip(self):
-        tw = self.tipwindow
-        self.tipwindow = None
-        if tw:
-            tw.destroy()
+        try:
+            tw = self.tipwindow
+            self.tipwindow = None
+            def fade_away():
+                alpha = tw.attributes("-alpha")
+                if alpha > 0:
+                    alpha -= .1
+                    tw.attributes("-alpha", alpha)
+                    tw.after(10, fade_away)
+                else:
+                    tw.destroy()
+            if tw:
+                fade_away()
+        except:
+            root.after_cancel(task)
 
 
 class SolitareGameWindow(tk.Tk):
