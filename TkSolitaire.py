@@ -259,12 +259,40 @@ class ToolTip:
         label = tk.Label(tw, text="  "+self.text+"  ", justify=self.justify, background=self.background,
                          foreground=self.foreground, relief=self.relief, borderwidth=self.borderwidth, font=self.font)
         label.pack(ipadx=1)
-
+        tw.attributes("-alpha", 0)
+        def fade_in():
+            alpha = tw.attributes("-alpha")
+            if alpha != 1:
+                alpha += .1
+                tw.attributes("-alpha", alpha)
+                tw.after(10, fade_in)
+            else:
+                tw.attributes("-alpha", 1)
+        fade_in()
+    
     def hidetip(self):
-        tw = self.tipwindow
-        self.tipwindow = None
-        if tw:
-            tw.destroy()
+        global window
+        try:
+            tw = self.tipwindow
+            if not self.tipwindow.attributes("-alpha") in [0, 1]:
+                self.tipwindow.destroy()
+            self.tipwindow = None
+            def fade_away():
+                global task
+                alpha = tw.attributes("-alpha")
+                if alpha > 0:
+                    alpha -= .1
+                    tw.attributes("-alpha", alpha)
+                    task = tw.after(10, fade_away)
+                else:
+                    tw.destroy()
+            if tw:
+                fade_away()
+        except Exception as e:
+            try:
+                self.tipwindow.destoy()
+            except:
+                pass
 
 
 class SolitareGameWindow(tk.Tk):
@@ -2671,7 +2699,7 @@ class CustomGameMaker(tk.Toplevel):
         self.grid_all()
 
         try:
-            root.iconbitmap(os.path.dirname(
+            self.iconbitmap(os.path.dirname(
                 os.path.abspath(__file__)) + "/resources/icon.ico")
         except:
             icon = tk.PhotoImage(file=(os.path.dirname(
@@ -3196,7 +3224,7 @@ class Settings(tk.Toplevel):
         self.grid_all()
 
         try:
-            root.iconbitmap(os.path.dirname(
+            self.iconbitmap(os.path.dirname(
                 os.path.abspath(__file__)) + "/resources/icon.ico")
         except:
             icon = tk.PhotoImage(file=(os.path.dirname(
@@ -3601,6 +3629,7 @@ class Settings(tk.Toplevel):
 
 
 def main():
+    global window
     window = SolitareGameWindow()
     window.mainloop()
 
