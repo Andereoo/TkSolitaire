@@ -229,6 +229,8 @@ class ToolTip:
         self.tipwindow = None
         self.id = None
         self.x = self.y = 0
+        
+        self.transition = 10
 
         self.justify = justify
         self.background = background
@@ -265,34 +267,30 @@ class ToolTip:
             if alpha != 1:
                 alpha += .1
                 tw.attributes("-alpha", alpha)
-                tw.after(10, fade_in)
+                tw.after(self.transition, fade_in)
             else:
                 tw.attributes("-alpha", 1)
         fade_in()
     
     def hidetip(self):
-        global window
+        tw = self.tipwindow
+        self.tipwindow = None
         try:
-            tw = self.tipwindow
-            if not self.tipwindow.attributes("-alpha") in [0, 1]:
-                self.tipwindow.destroy()
-            self.tipwindow = None
             def fade_away():
-                global task
                 alpha = tw.attributes("-alpha")
                 if alpha > 0:
                     alpha -= .1
                     tw.attributes("-alpha", alpha)
-                    task = tw.after(10, fade_away)
+                    task = tw.after(self.transition, fade_away)
                 else:
                     tw.destroy()
-            if tw:
+            if not tw.attributes("-alpha") in [0, 1]:
+                tw.destroy()
+            else:
                 fade_away()
         except Exception as e:
-            try:
-                self.tipwindow.destoy()
-            except:
-                pass
+            if tw:
+                tw.destoy()
 
 
 class SolitareGameWindow(tk.Tk):
@@ -3629,7 +3627,6 @@ class Settings(tk.Toplevel):
 
 
 def main():
-    global window
     window = SolitareGameWindow()
     window.mainloop()
 
