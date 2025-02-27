@@ -1,3 +1,5 @@
+<a href="https://www.buymeacoffee.com/andereoo" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-violet.png" alt="Buy Me A Coffee" style="height: 35px !important;width: 140px !important;" ></a>
+
 # TkSolitaire
 
 TkSolitaire is an accessible and embeddable solitaire game application written in Tkinter.
