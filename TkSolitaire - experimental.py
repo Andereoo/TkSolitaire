@@ -1,13 +1,22 @@
 # TkSolitaire, an embeddable and accessable solitaire game for Tkinter and Python 3
 # This code has had many growing pains and is quite a disaster, but hey, it works!
 
+# This version is a slightly updated version of the original TkSolitaire game. 
+# It has better support for window resizing, a nicer settings page, an information page, and the game finisher is much more responsive. 
+# It might have some bugs. It might not.
+# Enjoy!
+
 import json
 import os
 import random
+import threading
 
 import tkinter as tk
 from tkinter import messagebox, ttk
 from tkinter.colorchooser import askcolor
+
+from tkinterweb import HtmlFrame
+import webbrowser
 
 from PIL import Image, ImageTk
 
@@ -74,18 +83,28 @@ class OptionBar(tk.Frame):
 
 
 class HoverButton(tk.Button):
-    def __init__(self, parent, movetype="Click", alt=None, ttjustify="left", ttbackground="#ffffe0", ttforeground="black", ttrelief="solid", ttborderwidth=0, ttfont=("tahoma", "8", "normal"), ttlocationinvert=False, ttheightinvert=False, **kwargs):
+    def __init__(self, parent, movetype="Click", alt=None, ttjustify="left", ttbackground="#ffffe0",
+                 ttforeground="black", ttrelief="solid", ttborderwidth=0, ttfont=("tahoma", "8", "normal"),
+                 ttlocationinvert=False, ttheightinvert=False, disabledcursor="", **kwargs):
         self.command = kwargs.pop("command")
         self.clickedbackground = kwargs.pop("clickedbackground")
+        if "state" in kwargs and "cursor" in kwargs:
+            self.default_cursor = kwargs["cursor"]
+            if kwargs["state"] == "disabled":
+                kwargs["cursor"] = disabledcursor
+        else:
+            self.default_cursor = "hand2"
         tk.Label.__init__(self, parent, **kwargs)
         self.default_highlight = self["highlightbackground"]
         self.default_background = self["background"]
+        self.disabledcursor = disabledcursor
         self.text = alt
         self.parent = parent
         self.movetype = movetype
         self.job = None
         self.job2 = None
         self.on_button = False
+        self.toggled = False
 
         self.hover_time = 600
         self.auto_click_time = 1000
@@ -97,6 +116,8 @@ class HoverButton(tk.Button):
         self.bind("<Leave>", self.on_leave)
         self.bind("<Button-1>", self.on_click)
         self.bind("<ButtonRelease-1>", self.on_release)
+
+        self.reset()
 
     def cancel_jobs(self):
         if self.text:
@@ -114,7 +135,7 @@ class HoverButton(tk.Button):
             self.cancel_jobs()
 
     def on_release(self, event):
-        if self["state"] == "normal":
+         if self["state"] == "normal":
             if self.on_button:
                 self.parent.after(0, self.command)
                 self.config(bg=self["activebackground"])
@@ -125,7 +146,7 @@ class HoverButton(tk.Button):
             if self.text:
                 self.job = self.parent.after(
                     self.hover_time, self.complete_enter)
-            if (self.movetype == "Accessability Mode") and (self["state"] == "normal"):
+            if (self.movetype == "Accessibility Mode") and (self["state"] == "normal"):
                 self.job2 = self.parent.after(
                     self.auto_click_time, self.run_command)
             self.hover_time = 600
@@ -135,10 +156,10 @@ class HoverButton(tk.Button):
         self.cancel_jobs()
         if self["state"] == "normal":
             self.config(
-                background=self["activebackground"], highlightbackground="black")
+                background=self["activebackground"], highlightbackground=self["activebackground"])
         if self.text:
             self.job = self.parent.after(self.hover_time, self.complete_enter)
-        if (self.movetype == "Accessability Mode") and (self["state"] == "normal"):
+        if (self.movetype == "Accessibility Mode") and (self["state"] == "normal"):
             self.job2 = self.parent.after(
                 self.auto_click_time, self.run_command)
 
@@ -163,10 +184,10 @@ class HoverButton(tk.Button):
             if self.job2 is not None:
                 self.parent.after_cancel(self.job2)
                 self.job2 = None
-            self.tool_tip.hidetip()
+            #self.tool_tip.hidetip()
             self.hover_time = 2600
             self.job = self.parent.after(self.hover_time, self.complete_enter)
-            if (self.movetype == "Accessability Mode") and (self["state"] == "normal"):
+            if (self.movetype == "Accessibility Mode") and (self["state"] == "normal"):
                 self.job2 = self.parent.after(
                     self.auto_click_time, self.run_command)
             self.hover_time = 600
@@ -178,12 +199,33 @@ class HoverButton(tk.Button):
         self.tool_tip.hidetip()
 
     def disable(self):
+        if self["state"] != "disabled":
+            self.reset()
+            self.config(cursor=self.disabledcursor)
+            self.config(state="disabled")
+    
+    def enable(self):
+        if self["state"] != "normal":
+            #self.reset()
+            self.config(cursor=self.default_cursor)
+            self.config(state="normal")
+
+    def toggle(self):
+        self.toggled = True
         self.reset()
-        self.config(state="disabled")
+
+    def untoggle(self):
+        self.toggled = False
+        if not self.on_button:
+            self.reset()
 
     def reset(self):
-        self.config(background=self.default_background,
-                    highlightbackground=self.default_highlight)
+        if self.toggled:
+            self.config(background=self["activebackground"],
+                        highlightbackground=self["activebackground"])
+        else:
+            self.config(background=self.default_background,
+                        highlightbackground=self.default_highlight)
 
     def change_command(self, command):
         self.command = command
@@ -246,49 +288,56 @@ class ToolTip:
         self.text = text
         if self.tipwindow or not self.text:
             return
-        pos_x, pos_y, cx, cy = self.widget.bbox("insert")
-        xoffset = 21
-        if not self.locationinvert:
-            pos_x = pos_x + self.widget.winfo_rootx() + xoffset
-        else:
-            pos_x = pos_x + self.widget.winfo_rootx() - xoffset*3
-        if not self.heightinvert:
-            pos_y = pos_y + cy + self.widget.winfo_rooty() + 40
-        else:
-            pos_y = pos_y + cy + self.widget.winfo_rooty() - 20
         self.tipwindow = tw = tk.Toplevel(self.widget, bg="#2e2b2b")
+        tw.attributes("-alpha", 0)
         tw.wm_overrideredirect(1)
-        tw.wm_geometry("+%d+%d" % (pos_x, pos_y))
+        
         label = tk.Label(tw, text="  "+self.text+"  ", justify=self.justify, background=self.background,
                          foreground=self.foreground, relief=self.relief, borderwidth=self.borderwidth, font=self.font)
         label.pack(ipadx=1)
-        tw.attributes("-alpha", 0)
-        def fade_in():
-            alpha = tw.attributes("-alpha")
+
+        def get_coords(w):
+            if not self.locationinvert:
+                xoffset = ((w/2) - (self.widget.winfo_width()/2))
+                pos_x = self.widget.winfo_rootx() - xoffset
+                if self.widget.winfo_x() - xoffset <= 0:
+                    pos_x = self.widget.winfo_rootx()
+            else:
+                pos_x = self.widget.winfo_rootx() - (w - self.widget.winfo_width())
+            if not self.heightinvert:
+                pos_y = self.widget.winfo_rooty() + 40
+            else:
+                pos_y = self.widget.winfo_rooty() - 20
+            return pos_x, pos_y
+        
+        # move the tooltip off the screen while calling update() to avoid flashing
+        # a bit dorky but it works
+        tw.wm_geometry("+%d+%d" % (2000, 2000)) 
+        label.update()
+        tw.wm_geometry("+%d+%d" % (get_coords(label.winfo_width())))        
+        
+        def fade_in(alpha):
             if alpha != 1:
                 alpha += .1
                 tw.attributes("-alpha", alpha)
-                tw.after(self.transition, fade_in)
-            else:
-                tw.attributes("-alpha", 1)
-        fade_in()
+                tw.after(self.transition, fade_in, alpha)
+        fade_in(0)
     
     def hidetip(self):
         tw = self.tipwindow
         self.tipwindow = None
         try:
-            def fade_away():
-                alpha = tw.attributes("-alpha")
+            def fade_away(alpha):
                 if alpha > 0:
                     alpha -= .1
                     tw.attributes("-alpha", alpha)
-                    task = tw.after(self.transition, fade_away)
+                    tw.after(self.transition, fade_away, alpha)
                 else:
                     tw.destroy()
             if not tw.attributes("-alpha") in [0, 1]:
                 tw.destroy()
             else:
-                fade_away()
+                fade_away(1)
         except Exception as e:
             if tw:
                 tw.destoy()
@@ -298,16 +347,15 @@ class SolitareGameWindow(tk.Tk):
     def __init__(self, **kwargs):
         tk.Tk.__init__(self, **kwargs)
 
-        try:
-            self.attributes("-zoomed", True)
-        except:
-            self.state("zoomed")
-
         self.title("TkSolitaire")
-        self.minsize(1300, 500)
+        self.minsize(1300, 700)
+        #self.minsize(1500, 700)
+        #self.geometry("1536x700")
 
         solitaire_frame = SolitareGameFrame(self)
         solitaire_frame.pack(expand=True, fill="both")
+
+        solitaire_frame.bind("<<WindowClose>>", self.close)
 
         try:
             self.iconbitmap(os.path.dirname(
@@ -315,7 +363,11 @@ class SolitareGameWindow(tk.Tk):
         except:
             icon = tk.PhotoImage(file=(os.path.dirname(
                 os.path.abspath(__file__)) + "/resources/icon.png"))
+            print(icon)
             self.tk.call("wm", "iconphoto", self._w, icon)
+        
+    def close(self, *args):
+        self.destroy()
 
 
 class SolitareGameFrame(tk.Frame):
@@ -330,7 +382,10 @@ class SolitareGameFrame(tk.Frame):
         self.bind_all("<Control-h>", self.generate_hint)
         self.bind_all("<F5>", self.send_cards_up)
         self.bind_all("<F1>", self.open_settings)
+        self.bind_all("<F2>", self.open_information)
         self.bind_all("<F11>", self.fullscreen)
+        self.bind_all("<Control-q>", self.close_window)
+        self.bind_all("<Control-w>", self.close_window)
         self.bind("<Configure>", self.self_configure)
 
         self.canvas = tk.Canvas(self, bd=0, highlightthickness=0)
@@ -355,7 +410,16 @@ class SolitareGameFrame(tk.Frame):
         self.game_started = False
         self.move_flag = False
         self.job = None
-        self.win = None
+        self.loc_skew = 0
+        self.height_skew = 1
+        self.max_width = 1536
+        self.max_height = 715
+        self.width = self.max_width
+        self.height = self.max_height
+        self.settings = None
+        self.information = None    
+        self.current_side_panel = None    
+        self.cardsender_may_continue = True
 
         os.chdir(os.path.dirname(os.path.abspath(__file__)))
         try:
@@ -442,8 +506,10 @@ class SolitareGameFrame(tk.Frame):
         self.columnconfigure(0, weight=1)
 
         self.header = header = OptionBar(self, invert=True, manager="grid")
-        button_settings = {"movetype": self.movetype, "ttbackground": "#1c1c1b", "ttforeground": "white", "ttfont": (
-            "Verdana", "10", "normal"), "relief": "flat", "bg": "#1c1a1a", "activebackground": "#4f4a4a", "highlightbackground": "#1c1a1a", "clickedbackground": "#2e2b2b"}
+        button_settings = {"movetype": self.movetype, "ttbackground": "#1c1c1b", "ttforeground": "white",
+                           "ttfont": ("Verdana", "10", "normal"), "cursor": "hand2", "relief": "flat",
+                           "bg": "#1c1a1a", "activebackground": "#4f4a4a", "highlightbackground": "#1c1a1a",
+                           "clickedbackground": "#2e2b2b", "highlightthickness": 3}
         self.new_game_button = new_game_button = HoverButton(
             header, alt="Start a new game (Ctrl+N)", command=self.new_game, image=self.convert_pictures("star.png", main=False), **button_settings)
         self.restart_game_button = restart_game_button = HoverButton(
@@ -460,10 +526,14 @@ class SolitareGameFrame(tk.Frame):
             header, alt="Send Cards to Aces (F5)", command=self.send_cards_up, image=self.convert_pictures("ol.png", main=False), **button_settings)
         self.settings_button = settings_button = HoverButton(
             header, alt="Settings (F1)", command=self.open_settings, image=self.convert_pictures("settings.png", main=False), **button_settings)
+        self.info_button = info_button = HoverButton(
+            header, alt="Information (F2)", command=self.open_information, image=self.convert_pictures("information.png", main=False), **button_settings)
         self.fullscreen_button = fullscreen_button = HoverButton(header, alt="Fullscreen (F11)", command=self.fullscreen, image=self.convert_pictures(
             "fullscreen.png", main=False), ttlocationinvert=True, **button_settings)
+        self.quit_button = quit_button = HoverButton(header, alt="Quit (Ctrl+Q)", command=self.close_window, image=self.convert_pictures(
+            "quit.png", main=False), ttlocationinvert=True, **button_settings)
 
-        header.columnconfigure(12, weight=1)
+        header.columnconfigure(13, weight=1)
 
         new_game_button.grid(row=1, column=0, padx=6, pady=1)
         if self.restart_game_button_enabled:
@@ -484,13 +554,16 @@ class SolitareGameFrame(tk.Frame):
         send_cards_up_button.grid(row=1, column=9, padx=6, pady=1)
         header.add_buffer(width=4, row=1, column=10)
         settings_button.grid(row=1, column=11, padx=6, pady=1)
-        fullscreen_button.grid(row=1, column=12, padx=16, pady=1, sticky="e")
+        info_button.grid(row=1, column=12, padx=6, pady=1)
+        fullscreen_button.grid(row=1, column=13, padx=6, pady=1, sticky="e")
+        quit_button.grid(row=1, column=14, padx=6, pady=1, sticky="e")
 
         self.headerless_settings_button = headerless_settings_button = HoverButton(self.canvas, movetype=self.movetype,
                                                                                    alt="Settings", ttheightinvert=True, ttbackground="#1c1c1b",
                                                                                    ttforeground="white", ttfont=("Verdana", "10", "normal"),
                                                                                    bg=self.canvas["bg"], activebackground=self.generate_altered_colour(
                                                                                        self.canvas["bg"]),
+                                                                                   highlightthickness=3, cursor="hand2",
                                                                                    highlightbackground="#103b0a", clickedbackground=self.generate_altered_colour(self.canvas["bg"]), command=self.open_settings,
                                                                                    relief="flat", image=self.convert_pictures("settings.png", main=False))
 
@@ -498,10 +571,12 @@ class SolitareGameFrame(tk.Frame):
             header.grid(row=0, column=0, columnspan=100, sticky="ew")
         else:
             self.canvas.rowconfigure(1, weight=1)
-            headerless_settings_button.grid(row=1, sticky="sw")
+            headerless_settings_button.grid(row=1, sticky="sw", padx=4, pady=4)
         self.canvas.grid(row=1, column=0, sticky="nsew")
 
         self.footer = footer = OptionBar(self)
+        self.sending_cards_label = tk.Label(
+            footer, text="Looking for cards.   Please wait.", fg="white", bg="#1c1a1a")
         self.points_label = tk.Label(
             footer, text="Points: %s" % self.starting_points, fg="white", bg="#1c1a1a")
         self.stopwatch = stopwatch = Stopwatch(
@@ -516,18 +591,140 @@ class SolitareGameFrame(tk.Frame):
             footer, text="Stock left: "+str(self.stock_left), fg="white", bg="#1c1a1a")
 
         if self.show_footer:
-            footer.grid(row=2, column=0, sticky="ew")
+            footer.grid(row=2, column=0, columnspan=100, sticky="ew")
 
         self.points_label.pack(side="right", padx=6, pady=4)
         if self.show_stopwatch:
             stopwatch.pack(side="right", padx=6, pady=4)
 
+    def fade_in(self, widget, count):
+        if widget == self.information: count += 5
+        else: count += 15
+
+        if count < 500:
+            widget.place(x=self.canvas.winfo_width()-count)
+            self.after(2, lambda widget=widget, count=count: self.fade_in(widget, count))
+        else:
+            widget.place(x=self.canvas.winfo_width()-500)
+    
+    def fade_out(self, widget, count):
+        count -= 5
+        if count > 0:
+            widget.place(x=self.canvas.winfo_width()-count)
+            self.after(2, lambda widget=widget, count=count: self.fade_out(widget, count))
+        else:
+            widget.place_forget()
+            #destroy()
+
+    def open_information(self, *args):
+        if self.move_flag:
+            return
+        self.initiate_game(close_popups=False)# close_popup()#continue_settings()
+        #if self.settings:
+        #    if self.settings.winfo_ismapped():
+        #        self.close_settings()
+        if not self.information:
+            self.information = information = Information(self, width=500, height=self.canvas.winfo_height())
+            information.place(x=self.canvas.winfo_width(), y=self.canvas.winfo_y())
+            information.update()
+            information.bind("<<InformationClose>>", self.close_information)
+        else:
+            if self.settings and self.information.winfo_ismapped() and self.settings.winfo_ismapped() and self.information != self.current_side_panel:
+                self.current_side_panel = self.information
+                self.information.lift()
+                return
+            if self.information.winfo_ismapped():
+                self.close_information()
+                return
+            self.information.config(width=500, height=self.canvas.winfo_height())
+            self.information.place(x=self.canvas.winfo_width(), y=self.canvas.winfo_y())
+        self.current_side_panel = self.information
+        self.information.lift()
+        self.fade_in(self.information, 0)
+        self.info_button.toggle()
+
+        if (self.settings and not self.settings.winfo_ismapped()) or not self.settings:
+            self.create_rectangle(0, 0, 2000, 2000, fill="black", alpha=.6, tag="cover")
+            self.canvas.config(state="disabled")
+        
+    def close_information(self, *args, num=500):
+        if self.information:
+            if self.information.winfo_manager() == "grid":
+                self.information.config(width=500, height=self.canvas.winfo_height())
+                self.information.place(x=self.canvas.winfo_width(), y=self.canvas.winfo_y())
+                self.information.update()
+            self.fade_out(self.information, num)
+            if (self.settings and not self.settings.winfo_ismapped()) or not self.settings:
+                self.canvas.delete("cover")
+                self.canvas.config(state="normal")
+            self.info_button.untoggle()
+
     def open_settings(self, *args):
         if self.move_flag:
             return
-        self.settings = settings = Settings(self)
-        #settings.grab_set()
-        settings.bind("<<SettingsClose>>", self.continue_settings)
+        self.initiate_game(close_popups=False)#close_popup()#continue_settings()
+        #if self.information:
+        #    if self.information.winfo_ismapped():
+        #        self.close_information()
+        if not self.settings:
+            self.settings = settings = Settings(self, width=500, height=self.canvas.winfo_height())
+            settings.place(x=self.canvas.winfo_width(), y=self.canvas.winfo_y())
+            settings.update()
+            settings.bind("<<SettingsClose>>", self.close_settings)
+            settings.bind("<<SettingsSaved>>", self.continue_settings)
+        else:
+            if self.information and self.settings.winfo_ismapped() and self.information.winfo_ismapped() and self.settings != self.current_side_panel:
+                self.current_side_panel = self.settings
+                self.settings.lift()
+                return
+            if self.settings.winfo_ismapped():
+                self.close_settings()
+                return
+            self.settings.config(width=500, height=self.canvas.winfo_height())
+            self.settings.place(x=self.canvas.winfo_width(), y=self.canvas.winfo_y())
+        self.current_side_panel = self.settings
+        self.settings.lift()
+        self.fade_in(self.settings, 0)
+        self.settings_button.toggle()
+        self.headerless_settings_button.toggle()
+
+        if (self.information and not self.information.winfo_ismapped()) or not self.information:
+            self.create_rectangle(0, 0, 2000, 2000, fill="black", alpha=.6, tag="cover")
+            self.canvas.config(state="disabled")
+        
+    def close_popup(self):
+        if self.information:
+            if self.information.winfo_ismapped():
+                self.close_information()
+        if self.settings:
+            if self.settings.winfo_ismapped():
+                self.close_settings()
+        self.canvas.delete("cover")
+        self.canvas.config(state="normal")
+
+    def close_settings(self, event=None, num=500):
+        settings = self.settings
+        if settings:
+            if self.settings.winfo_manager() == "grid":
+                self.settings.config(width=500, height=self.canvas.winfo_height())
+                self.settings.place(x=self.canvas.winfo_width(), y=self.canvas.winfo_y())
+            settings.save()#delete_window()#destroy()
+            settings.grid_propagate(0)
+            self.fade_out(settings, num)
+            if (self.information and not self.information.winfo_ismapped()) or not self.information:
+                self.canvas.delete("cover")
+                self.canvas.config(state="normal")
+            self.settings_button.untoggle()
+            self.headerless_settings_button.untoggle()
+
+    def close_window(self, event=None):
+        if self.history:
+            close = messagebox.askquestion(
+                "Quit game", "Are you sure you want to quit?", icon="warning")
+            if close == "yes":
+                self.event_generate("<<WindowClose>>")
+        else:
+            self.event_generate("<<WindowClose>>")
 
     def fullscreen(self, event=None):
         self.parent.attributes(
@@ -542,7 +739,7 @@ class SolitareGameFrame(tk.Frame):
                 image=self.convert_pictures("fullscreen.png", main=False))
             self.win_fullscreen = True
 
-    def continue_settings(self, *args):
+    def continue_settings(self, *args):     
         previous_movetype = self.movetype
         previous_larger_cards = self.larger_cards
         self.canvas.tag_unbind("card_below_rect", "<Enter>")
@@ -569,6 +766,7 @@ class SolitareGameFrame(tk.Frame):
         self.new_game_button.movetype = self.movetype
         self.deal_next_card_button.movetype = self.movetype
         self.settings_button.movetype = self.movetype
+        self.info_button.movetype = self.movetype
         self.fullscreen_button.movetype = self.movetype
         self.headerless_settings_button.movetype = self.movetype
 
@@ -606,7 +804,7 @@ class SolitareGameFrame(tk.Frame):
         if self.show_footer:
             if not self.footer.winfo_ismapped():
                 self.update_idletasks()
-                self.footer.grid(row=2, column=0, sticky="ew")
+                self.footer.grid(row=2, column=0, columnspan=100, sticky="ew")
         else:
             self.footer.grid_forget()
         self.points_label["text"] = (
@@ -635,17 +833,17 @@ class SolitareGameFrame(tk.Frame):
             self.headerless_settings_button["activebackground"] = self.generate_altered_colour(
                 self.canvas["bg"])
             self.canvas.update_idletasks()
-            self.headerless_settings_button.grid(row=1, sticky="sw")
+            self.headerless_settings_button.grid(row=1, sticky="sw", padx=4, pady=4)
 
         if self.movetype != previous_movetype:
             for card in self.canvas.find_withtag("face_up"):
                 card_tag = self.canvas.gettags(card)[0]
-                self.canvas.tag_unbind(card_tag,  "<Button-1>")
+                self.canvas.tag_unbind(card_tag, "<Button-1>")
                 self.canvas.tag_unbind(card_tag, "<Button1-Motion>")
                 self.canvas.tag_unbind(card_tag, "<ButtonRelease-1>")
                 self.canvas.tag_unbind(card_tag, "<Enter>")
                 self.canvas.tag_unbind(card_tag, "<Leave>")
-                if self.movetype == "Accessability Mode":
+                if self.movetype == "Accessibility Mode":
                     self.canvas.tag_bind(card_tag, "<Enter>", self.enter_card)
                     self.canvas.tag_bind(card_tag, "<Leave>", self.leave_hover)
                     self.canvas.tag_bind(
@@ -670,7 +868,7 @@ class SolitareGameFrame(tk.Frame):
                 if card_tag == "empty_cardstack_slot":
                     continue
                 else:
-                    if self.movetype == "Accessability Mode":
+                    if self.movetype == "Accessibility Mode":
                         self.canvas.tag_bind(
                             card_tag, "<Enter>", self.enter_stack)
                         self.canvas.tag_bind(
@@ -701,7 +899,7 @@ class SolitareGameFrame(tk.Frame):
             self.canvas.tag_unbind("empty_ace_slot", "<ButtonRelease-1>")
             self.canvas.tag_unbind("empty_cardstack_slot", "<Button-1>")
 
-            if self.movetype == "Accessability Mode":
+            if self.movetype == "Accessibility Mode":
                 self.canvas.tag_bind("empty_slot", "<Enter>", self.enter_card)
                 self.canvas.tag_bind(
                     "empty_ace_slot", "<Enter>", self.enter_card)
@@ -746,9 +944,9 @@ class SolitareGameFrame(tk.Frame):
                 self.deal_next_card_button.disable()
                 ret = True
             else:
-                self.deal_next_card_button.config(state="normal")
+                self.deal_next_card_button.enable()
         else:
-            self.deal_next_card_button.config(state="normal")
+            self.deal_next_card_button.enable()
 
         if not ret:
             if self.stock_left == 0:
@@ -883,11 +1081,11 @@ class SolitareGameFrame(tk.Frame):
         card_image = self.dict_of_cards[self.cards[self.card_drawing_count]]
         if self.larger_cards:
             self.canvas.create_image(
-                165+row*130, col*20, image=card_image, tag=(card_tag, "face_up"), anchor=tk.NW)
+                255+row*130, col*20, image=card_image, tag=(card_tag, "face_up"), anchor=tk.NW)
         else:
             self.canvas.create_image(
-                195+row*110, col*20, image=card_image, tag=(card_tag, "face_up"), anchor=tk.NW)
-        if self.movetype == "Accessability Mode":
+                295+row*110, col*20, image=card_image, tag=(card_tag, "face_up"), anchor=tk.NW)
+        if self.movetype == "Accessibility Mode":
             self.canvas.tag_bind(card_tag, "<Enter>", self.enter_card)
             self.canvas.tag_bind(card_tag, "<Leave>", self.leave_hover)
             self.canvas.tag_bind(card_tag, "<Button-1>", self.card_onclick)
@@ -911,10 +1109,10 @@ class SolitareGameFrame(tk.Frame):
         self.canvas.tag_unbind(card_tag, "<Leave>")
         if self.larger_cards:
             self.canvas.create_image(
-                165+row*130, col*20, image=self.back_of_card, tag=(card_tag, "face_down"), anchor=tk.NW)
+                255+row*130, col*20, image=self.back_of_card, tag=(card_tag, "face_down"), anchor=tk.NW)
         else:
             self.canvas.create_image(
-                195+row*110, col*20, image=self.back_of_card, tag=(card_tag, "face_down"), anchor=tk.NW)
+                295+row*110, col*20, image=self.back_of_card, tag=(card_tag, "face_down"), anchor=tk.NW)
         self.card_drawing_count += 1
 
     def draw_remaining_cards(self):
@@ -925,7 +1123,7 @@ class SolitareGameFrame(tk.Frame):
             self.canvas.tag_unbind(card_tag, "<Leave>")
             self.canvas.create_image(20, 20, image=self.back_of_card, tag=(
                 card_tag, "face_down"), anchor=tk.NW)
-            if self.movetype == "Accessability Mode":
+            if self.movetype == "Accessibility Mode":
                 self.canvas.tag_bind(card_tag, "<Enter>", self.enter_stack)
                 self.canvas.tag_bind(card_tag, "<Leave>", self.leave_hover)
                 self.canvas.tag_bind(
@@ -947,43 +1145,57 @@ class SolitareGameFrame(tk.Frame):
             self.canvas.images.append(picture)
         else:
             self.button_images.append(picture)
-        return picture                
+        return picture
 
+    def self_configure(self, event, after_restart=False):
+        if self.information:
+            if self.information.winfo_manager() == "place":
+                self.information.grid(row=1, column=1, sticky="ns")
+        if self.settings:
+            if self.settings.winfo_manager() == "place":
+                self.settings.grid(row=1, column=1, sticky="ns")
+         
+        try:
+            if after_restart:
+                width = self.width
+                height = self.height
+                wdiff = self.width - self.max_width
+                hscale = self.height / self.max_height
+                self.height_skew = 1
+            else:
+                width = event.width
+                height = event.height
+                wdiff = width - self.width
+                hscale = (float(height) / self.height)
 
-    def self_configure(self, event, width=None):
-        #adjust locations of ace slots for desktops with taskbars on side of screen
-        self.aces_adjusted = False
-        if width:
-            width_offset = width
-        else:
-            width_offset = event.width
-
-        aces = list(self.canvas.find_withtag("empty_ace_slot"))
-        aces.sort()
-        if width_offset < 1350:
-            if not self.aces_moved:
-                self.aces_moved = True
-                self.aces_adjusted = True
-                for item in aces:
-                    for card in self.canvas.find_overlapping(*self.canvas.bbox(item)):
-                        self.canvas.move(card, -60, 0)
-        if width_offset >= 1350:
-            if self.aces_moved:
-                self.aces_adjusted = False
-                for item in reversed(aces):
-                    for card in self.canvas.find_overlapping(*self.canvas.bbox(item)):
-                        self.canvas.move(card, 60, 0)
-                self.aces_moved = False
-        
+            self.width = width
+            self.height = height
+            change = wdiff / 2
+            x = list(self.canvas.bbox("empty_slot"))
+            x[3] = 1000
+            main_stacks = self.canvas.find_overlapping(*x)#(390, 10, 1280, 1000)
+            ace_stacks = self.canvas.find_overlapping(*self.canvas.bbox("empty_ace_slot"))#(1410, 10, 1525, 1000)
+            for i in ace_stacks:
+                if "cover" not in self.canvas.gettags(i):
+                    self.canvas.move(i, wdiff, 0)
+            for i in main_stacks:
+                if "cover" not in self.canvas.gettags(i):
+                    self.canvas.move(i, change, 0)
+            self.loc_skew += change
+            self.canvas.scale("all", 0, 0, 1, hscale)#self.canvas.canvasy
+            self.height_skew *= hscale
+        except AttributeError:
+            self.self_configure(event)
+       
     def draw_card_slots(self):
         self.aces_moved = False
         self.canvas.images = list()
         if not self.larger_cards:
             positions_of_main_rects = [
-                (305, 20), (415, 20), (525, 20), (635, 20), (745, 20), (855, 20), (965, 20)]
+                (405, 20), (515, 20), (625, 20), (735, 20), (845, 20), (955, 20), (1065, 20)]
         else:
             positions_of_main_rects = [
-                (295, 20), (425, 20), (555, 20), (685, 20), (815, 20), (945, 20), (1075, 20)]
+                (385, 20), (515, 20), (645, 20), (775, 20), (905, 20), (1035, 20), (1165, 20)]
 
         self.empty_slot = empty_slot = self.convert_pictures(self.scaled_cards_prefix+"empty_slot.png")
         for item in positions_of_main_rects:
@@ -991,35 +1203,52 @@ class SolitareGameFrame(tk.Frame):
                 *item, image=empty_slot, tag=("empty_slot"), anchor=tk.NW)
 
         if not self.larger_cards:
-            self.canvas.create_image(1170, 20, image=self.convert_pictures(self.scaled_cards_prefix+
+            self.canvas.create_image(1330, 20, image=self.convert_pictures(self.scaled_cards_prefix+
                 "ace_of_spades_slot.png"), tag=("spades", "empty_ace_slot"), anchor=tk.NW)
-            self.canvas.create_image(1270, 20, image=self.convert_pictures(self.scaled_cards_prefix+
+            self.canvas.create_image(1430, 20, image=self.convert_pictures(self.scaled_cards_prefix+
                 "ace_of_hearts_slot.png"), tag=("hearts", "empty_ace_slot"), anchor=tk.NW)
-            self.canvas.create_image(1170, 140, image=self.convert_pictures(self.scaled_cards_prefix+
+            self.canvas.create_image(1330, 140, image=self.convert_pictures(self.scaled_cards_prefix+
                 "ace_of_clubs_slot.png"), tag=("clubs", "empty_ace_slot"), anchor=tk.NW)
-            self.canvas.create_image(1270, 140, image=self.convert_pictures(self.scaled_cards_prefix+
+            self.canvas.create_image(1430, 140, image=self.convert_pictures(self.scaled_cards_prefix+
                 "ace_of_diamonds_slot.png"), tag=("diamonds", "empty_ace_slot"), anchor=tk.NW)
 
-            self.create_round_rectangle(
-                22, 22, 98, 118, width=2, fill="#124f09", outline="#207c12", tag="empty_cardstack_slot")
-            self.create_round_rectangle(
-                122, 22, 198, 118, width=2, fill="#124f09", outline="#207c12", tag="empty_cardstack_slotb")
+            self.canvas.create_image(20, 20, image=self.convert_pictures(self.scaled_cards_prefix+
+                "empty_slot.png"), tag="empty_cardstack_slot", anchor=tk.NW)
+            self.canvas.create_image(120, 20, image=self.convert_pictures(self.scaled_cards_prefix+
+                "empty_slot.png"), tag="empty_cardstack_slotb", anchor=tk.NW)
+            #self.create_round_rectangle(
+            #    22, 22, 98, 118, width=2, fill="#124f09", outline="#207c12", tag="empty_cardstack_slot")
+            #self.create_round_rectangle(
+            #    122, 22, 198, 118, width=2, fill="#124f09", outline="#207c12", tag="empty_cardstack_slotb")
         else:
-            self.canvas.create_image(1250, 20, image=self.convert_pictures(self.scaled_cards_prefix+
+            #self.canvas.create_image(1420, 20, image=self.convert_pictures(self.scaled_cards_prefix+
+            #    "ace_of_spades_slot.png"), tag=("spades", "empty_ace_slot"), anchor=tk.NW)
+            #self.canvas.create_image(1420, 170, image=self.convert_pictures(self.scaled_cards_prefix+
+            #    "ace_of_hearts_slot.png"), tag=("hearts", "empty_ace_slot"), anchor=tk.NW)
+            #self.canvas.create_image(1534, 20, image=self.convert_pictures(self.scaled_cards_prefix+
+            #    "ace_of_clubs_slot.png"), tag=("clubs", "empty_ace_slot"), anchor=tk.NW)
+            #self.canvas.create_image(1534, 170, image=self.convert_pictures(self.scaled_cards_prefix+
+            #    "ace_of_diamonds_slot.png"), tag=("diamonds", "empty_ace_slot"), anchor=tk.NW)
+            self.canvas.create_image(1420, 20, image=self.convert_pictures(self.scaled_cards_prefix+
                 "ace_of_spades_slot.png"), tag=("spades", "empty_ace_slot"), anchor=tk.NW)
-            self.canvas.create_image(1250, 170, image=self.convert_pictures(self.scaled_cards_prefix+
+            self.canvas.create_image(1420, 165, image=self.convert_pictures(self.scaled_cards_prefix+
                 "ace_of_hearts_slot.png"), tag=("hearts", "empty_ace_slot"), anchor=tk.NW)
-            self.canvas.create_image(1250, 320, image=self.convert_pictures(self.scaled_cards_prefix+
+            self.canvas.create_image(1420, 310, image=self.convert_pictures(self.scaled_cards_prefix+
                 "ace_of_clubs_slot.png"), tag=("clubs", "empty_ace_slot"), anchor=tk.NW)
-            self.canvas.create_image(1250, 470, image=self.convert_pictures(self.scaled_cards_prefix+
+            self.canvas.create_image(1420, 455, image=self.convert_pictures(self.scaled_cards_prefix+
                 "ace_of_diamonds_slot.png"), tag=("diamonds", "empty_ace_slot"), anchor=tk.NW)
 
-            self.create_round_rectangle(
-                22, 22, 118, 148, width=3, fill="#124f09", outline="#207c12", tag="empty_cardstack_slot")
-            self.create_round_rectangle(
-                136, 22, 233, 148, width=3, fill="#124f09", outline="#207c12", tag="empty_cardstack_slotb")
+            self.canvas.create_image(20, 20, image=self.convert_pictures(self.scaled_cards_prefix+
+                "empty_slot.png"), tag="empty_cardstack_slot", anchor=tk.NW)
+            self.canvas.create_image(134, 20, image=self.convert_pictures(self.scaled_cards_prefix+
+                "empty_slot.png"), tag="empty_cardstack_slotb", anchor=tk.NW)
 
-        if self.movetype == "Accessability Mode":
+            #self.create_round_rectangle(
+            #    22, 22, 118, 148, width=3, fill="#124f09", outline="#207c12", tag="empty_cardstack_slot")
+            #self.create_round_rectangle(
+            #    136, 22, 233, 148, width=3, fill="#124f09", outline="#207c12", tag="empty_cardstack_slotb")
+
+        if self.movetype == "Accessibility Mode":
             self.canvas.tag_bind("empty_slot", "<Enter>", self.enter_card)
             self.canvas.tag_bind("empty_ace_slot", "<Enter>", self.enter_card)
             self.canvas.tag_bind("empty_cardstack_slot",
@@ -1053,16 +1282,18 @@ class SolitareGameFrame(tk.Frame):
                 "empty_ace_slot", "<ButtonRelease-1>", self.drop_card)
             self.canvas.tag_bind("empty_cardstack_slot",
                                  "<Button-1>", self.refill_card_stack)
-        self.canvas.bind("<Button-1>", self.on_background)
-
-        self_width = self.winfo_width()
-        if self_width != 1:
-            self.self_configure(event=None, width=self_width)
-
-        
+        self.canvas.bind("<Button-1>", self.on_background)        
 
     def on_background(self, event):
-        if (self.canvas.find_overlapping(event.x-5, event.y-5, event.x+5, event.y+5)) == ():
+        self.close_popup()
+        self.cardsender_may_continue = False
+        if self.sending_cards_label.winfo_ismapped():
+            self.send_cards_up_button.untoggle()
+            self.sending_cards_label.pack_forget()
+            if self.total_redeals != "unlimited":
+                self.redeal_label.pack(side="left", padx=6, pady=4)
+            self.stock_label.pack(side="left", padx=6, pady=4)
+        if event and (self.canvas.find_overlapping(event.x-5, event.y-5, event.x+5, event.y+5)) == ():
             self.canvas.delete("rect")
             self.last_active_card = ""
             self.card_stack_list = ""
@@ -1079,10 +1310,20 @@ class SolitareGameFrame(tk.Frame):
         else:
             self.canvas.create_rectangle(x1, y1, x2, y2, tag="rect", **kwargs)
 
-    def initiate_game(self):
+    def initiate_game(self, from_button=True, close_popups=True):
+        if from_button:
+            self.cardsender_may_continue = False
+            if self.sending_cards_label.winfo_ismapped():
+                self.send_cards_up_button.untoggle()
+                self.sending_cards_label.pack_forget()
+                if self.total_redeals != "unlimited":
+                    self.redeal_label.pack(side="left", padx=6, pady=4)
+                self.stock_label.pack(side="left", padx=6, pady=4)
+        if close_popups:
+            self.close_popup()
         self.canvas_item_hover_time = self.canvas_default_item_hover_time
-        self.restart_game_button.config(state="normal")
-        self.redo_last_move_button.config(state="normal")
+        self.restart_game_button.enable()
+        self.redo_last_move_button.enable()
         try:
             last_move = self.history[-1]
         except:
@@ -1103,15 +1344,15 @@ class SolitareGameFrame(tk.Frame):
 
     def enter_card(self, event):
         self.job = self.after(
-            self.canvas_item_hover_time, lambda: self.card_onclick(event="Accessability Mode"))
+            self.canvas_item_hover_time, lambda: self.card_onclick(event="Accessibility Mode"))
 
     def enter_stack(self, event):
         self.job = self.after(
-            self.canvas_item_hover_time+800, lambda: self.stack_onclick(event="Accessability Mode"))
+            self.canvas_item_hover_time+800, lambda: self.stack_onclick(event="Accessibility Mode"))
 
     def enter_refill(self, event):
         self.job = self.after(self.canvas_item_hover_time+800,
-                              lambda: self.refill_card_stack(event="Accessability Mode"))
+                              lambda: self.refill_card_stack(event="Accessibility Mode"))
 
     def leave_hover(self, event):
         if self.job is not None:
@@ -1119,12 +1360,14 @@ class SolitareGameFrame(tk.Frame):
             self.job = None
 
     def restart_game(self, *args):
+        #self.close_popup()
         if self.move_flag:
             return
         self.reset_vars()
         self.redraw()
 
     def new_game(self, *args):
+        #self.close_popup()
         if self.move_flag:
             return
         self.shuffle_cards()
@@ -1193,8 +1436,7 @@ class SolitareGameFrame(tk.Frame):
                 text="Redeals left: "+str(max(0, self.total_redeals + self.redeals_left - 1)))
         self.points_label.config(text="Points: "+str(self.starting_points))
         self.stock_label.config(text="Stock left: "+str(self.stock_left))
-        self.deal_next_card_button.config(
-            state="normal")
+        self.deal_next_card_button.enable()
         self.deal_next_card_button.change_command(
             lambda event="deal_card_button": self.stack_onclick(event))
         if self.total_redeals != "unlimited":
@@ -1206,6 +1448,10 @@ class SolitareGameFrame(tk.Frame):
         self.draw_card_slots()
         self.generate_card_position()
         self.draw_remaining_cards()
+        
+        self_width = self.winfo_width()
+        if self_width != 1:
+            self.self_configure(event=None, after_restart = True)
 
     def find_available_cards(self):
         face_up_cards = list(reversed(self.canvas.find_withtag("face_up")))
@@ -1419,7 +1665,7 @@ class SolitareGameFrame(tk.Frame):
             self.create_rectangle(*card_b_bbox, fill="purple", alpha=.5)
             self.create_rectangle(*card_a_bbox, fill="purple", alpha=.5)
 
-            if self.movetype == "Accessability Mode":
+            if self.movetype == "Accessibility Mode":
                 self.canvas.tag_unbind("card_below_rect", "<Enter>")
                 self.canvas.tag_bind(
                     "rect", "<Enter>", self.enter_hover_on_hint_rect)
@@ -1438,7 +1684,7 @@ class SolitareGameFrame(tk.Frame):
                 if self.stock_left == 0 and (self.total_redeals + self.redeals_left - 1) <= 0:
                     ret = True
                     messagebox.showinfo(
-                        title="Ummmmmm.", message="I can't find any hints for you.\nYou may want to start a new game")
+                        title="Ummmmmm.", message="I can't find any hints for you.\nYou may want to start a new game.")
             if not ret:
                 cards = False
                 for card in self.canvas.find_overlapping(*self.canvas.bbox("empty_cardstack_slotb")):
@@ -1455,13 +1701,13 @@ class SolitareGameFrame(tk.Frame):
                 if not cards:
                     ret = True
                     messagebox.showinfo(
-                        title="Ummmmmm.", message="I can't find any hints for you.\nYou may want to start a new game")
+                        title="Ummmmmm.", message="I can't find any hints for you.\nYou may want to start a new game.")
 
             if not ret:
                 self.create_rectangle(
                     *self.canvas.bbox("empty_cardstack_slot"), fill="purple", alpha=.5)
 
-                if self.movetype == "Accessability Mode":
+                if self.movetype == "Accessibility Mode":
                     self.canvas.tag_unbind("card_below_rect", "<Enter>")
                     self.canvas.tag_bind(
                         "rect", "<Enter>", self.enter_hover_on_hint_rect)
@@ -1475,38 +1721,31 @@ class SolitareGameFrame(tk.Frame):
                     self.canvas.tag_bind(
                         "rect", "<Button-1>", self.click_on_hint_rect)
 
-    def create_wait_window(self, message, title, background, foreground):
-        win = tk.Toplevel(self, background=background)
-        win.transient()
-        win.wm_overrideredirect(1)
-        win.grab_set()
-        win.update()
-        win.title(title)
-        width = win.winfo_width()
-        height = win.winfo_height()
-        xoffset = (self.winfo_geometry().split("+"))[-2]
-        yoffset = (self.winfo_geometry().split("+"))[-1]
-        x = (self.winfo_width() // 2) - (width // 2) + int(xoffset) - 50
-        y = (self.winfo_height() // 2) - \
-            (height // 2) + int(yoffset) + 100
-        win.geometry("{}x{}+{}+{}".format(300, 40, x, y))
-        self.win_label_var = tk.StringVar(value=message)
-        win_label = tk.Label(
-            win, textvariable=self.win_label_var, bg=background, fg=foreground)
-        win_label.pack(expand=True, fill="both")
-        return win
-
     def send_cards_up(self, *args):
         if self.move_flag:
             return
-        self.initiate_game()
+        if self.send_cards_up_button.toggled:
+            self.on_background(None)
+            return
+        self.send_cards_up_button.toggle()
+        self.initiate_game(False)
+        #self.stopwatch.freeze(False)
+        thread = threading.Thread(daemon=True, target=self.continue_sending_cards)
+        thread.start()
+    
+    def continue_sending_cards(self):
+        if not self.sending_cards_label.winfo_ismapped():
+            self.sending_cards_label["text"] = "Looking for cards.   Please wait:"
+            self.sending_cards_label.pack(side="left", padx=6, pady=4)
+            self.redeal_label.pack_forget()
+            self.stock_label.pack_forget()
+            self.sending_cards_label.update()
+            self.cardsender_may_continue = True
+        if not self.cardsender_may_continue:
+            return
         self.card_stack_list = ""
         self.last_active_card = ""
         self.canvas.delete("rect")
-        self.stopwatch.freeze(False)
-        if self.win == None:
-            self.win = self.create_wait_window(
-                "Moving Cards... Please Wait.", "Please Wait", "#1c1c1b", "white")
         face_up_cards = list(reversed(self.canvas.find_withtag("face_up")))
         for card in face_up_cards:
             below_last = self.canvas.find_overlapping(*self.canvas.bbox(card))
@@ -1536,37 +1775,45 @@ class SolitareGameFrame(tk.Frame):
                 if card in face_up_cards:
                     face_up_cards.remove(card)
             over_ace.append(temp_over_ace[-1])
-        self.cardsender_may_continue = True
         for pair in over_ace:
             for card in face_up_cards:
                 if pair == card:
                     continue
-                self.change_current(card)
-                self.end_onclick(event="send_cards_to_ace")
-                self.canvas.dtag("current")
-                self.change_current(pair)
-                self.card_onclick(event="send_cards_to_ace")
-                self.canvas.dtag("current")
-                self.card_stack_list = ""
-                self.last_active_card = ""
-                self.canvas.delete("cardsender_highlight")
-                self.update_idletasks()
-                if self.card_moved_to_ace_by_sender == 1:
-                    self.win_label_var.set("Moved 1 Card.   Please Wait.")
-                else:
-                    self.win_label_var.set("Moved %s Cards.   Please Wait." % (
-                        self.card_moved_to_ace_by_sender))
+                self.after(0, self.continue_sending_cards2, card, pair)
 
-                if not self.cardsender_may_continue:
-                    return
         if self.cardsender_may_continue:
             if cards_moved != self.card_moved_to_ace_by_sender:
-                self.send_cards_up()
+                self.continue_sending_cards()
             else:
                 self.card_moved_to_ace_by_sender = 0
-                self.win.destroy()
-                self.win = None
-                self.stopwatch.freeze(True)
+                self.send_cards_up_button.untoggle()
+                self.sending_cards_label.pack_forget()
+                if self.total_redeals != "unlimited":
+                    self.redeal_label.pack(side="left", padx=6, pady=4)
+                self.stock_label.pack(side="left", padx=6, pady=4)
+
+    def continue_sending_cards2(self, card, pair):
+        if not self.cardsender_may_continue:
+            return
+        self.change_current(card)
+        self.end_onclick(event="send_cards_to_ace")
+        self.canvas.dtag("current")
+        self.change_current(pair)
+        self.card_onclick(event="send_cards_to_ace")
+        self.canvas.dtag("current")
+        self.card_stack_list = ""
+        self.last_active_card = ""
+        self.canvas.delete("cardsender_highlight")
+        self.update_idletasks()
+        if self.card_moved_to_ace_by_sender == 1:
+            message = "Moved 1 card.   Please wait."
+        elif self.card_moved_to_ace_by_sender > 0:
+            message = "Moved %s cards.   Please wait." % (
+                self.card_moved_to_ace_by_sender)
+        else:
+            message = None
+        if self.sending_cards_label["text"] != message:
+            self.sending_cards_label["text"] = message
 
     def redo_move(self, *args):
         if self.move_flag:
@@ -1601,7 +1848,7 @@ class SolitareGameFrame(tk.Frame):
         self.initiate_game()
         try:
             last_move = self.redo[-1]
-            self.redo_last_move_button.config(state="normal")
+            self.redo_last_move_button.enable()
             if self.redo_last_move_button.on_button:
                 self.redo_last_move_button.config(
                     background=self.redo_last_move_button["activebackground"])
@@ -1615,6 +1862,7 @@ class SolitareGameFrame(tk.Frame):
         self.canvas.addtag_withtag("current", tag)
 
     def undo_move(self, *args):
+        
         if self.move_flag:
             return
         self.last_active_card = ""
@@ -1640,7 +1888,7 @@ class SolitareGameFrame(tk.Frame):
                 self.canvas.tag_unbind(tag_a, "<Enter>")
                 self.canvas.tag_unbind(tag_a, "<Leave>")
                 self.canvas.tag_unbind(tag_a, "<Button-1>")
-                if self.movetype == "Accessability Mode":
+                if self.movetype == "Accessibility Mode":
                     self.canvas.tag_bind(tag_a, "<Enter>", self.enter_card)
                     self.canvas.tag_bind(tag_a, "<Leave>", self.leave_hover)
                     self.canvas.tag_bind(
@@ -1667,8 +1915,8 @@ class SolitareGameFrame(tk.Frame):
                     card, image=self.dict_of_cards[tag_a], tag=(tag_a, "face_up"))
                 self.stock_left -= 1
             self.stock_label.config(text="Stock left: "+str(self.stock_left))
-            self.undo_last_move_button.config(state="normal")
-            self.restart_game_button.config(state="normal")
+            self.undo_last_move_button.enable()
+            self.restart_game_button.enable()
             self.redo_last_move_button.disable()
 
         elif "stack_click_move" in last_move:
@@ -1685,14 +1933,14 @@ class SolitareGameFrame(tk.Frame):
             self.canvas.tag_unbind(tag_a, "<Enter>")
             self.canvas.tag_unbind(tag_a, "<Leave>")
             self.canvas.tag_unbind(tag_a, "<Button-1>")
-            if self.movetype == "Accessability Mode":
+            if self.movetype == "Accessibility Mode":
                 self.canvas.tag_bind(tag_a, "<Enter>", self.enter_stack)
                 self.canvas.tag_bind(tag_a, "<Leave>", self.leave_hover)
                 self.canvas.tag_bind(tag_a, "<Button-1>", self.stack_onclick)
             else:
                 self.canvas.tag_bind(tag_a, "<Button-1>", self.stack_onclick)
             self.canvas.tag_raise(self.canvas.find_withtag(tag_a))
-            self.deal_next_card_button.config(state="normal")
+            self.deal_next_card_button.enable()
             self.deal_next_card_button.change_command(
                 lambda event="deal_card_button": self.stack_onclick(event))
 
@@ -1706,8 +1954,8 @@ class SolitareGameFrame(tk.Frame):
             for i in last_move[2]:
                 card_location = self.canvas.coords(i)
                 current_location = last_move[2][i]
-                xpos = int(current_location[0]) - int(card_location[0])
-                ypos = (int(current_location[1]) - int(card_location[1]))
+                xpos = int(current_location[0] - (card_location[0] - self.loc_skew))
+                ypos = (current_location[1] * self.height_skew) - (card_location[1])
                 self.canvas.move(i, xpos, ypos)
                 if True in last_move:
                     self.canvas.tag_raise(i)
@@ -1729,8 +1977,8 @@ class SolitareGameFrame(tk.Frame):
             if last_move[1]:
                 current_image_location = self.canvas.coords(last_move[1])
                     
-            xpos = int(current_image_location[0]) - int(card_location[0])
-            ypos = (int(current_image_location[1]) - int(card_location[1]))
+            xpos = int(current_image_location[0]) - int(card_location[0])# + self.loc_skew
+            ypos = int(current_image_location[1] * self.height_skew) - int(card_location[1])
             self.canvas.move(last_move[3], xpos, ypos)
             self.canvas.tag_raise(last_move[3])
 
@@ -1743,14 +1991,14 @@ class SolitareGameFrame(tk.Frame):
                 self.points_label["text"] = (
                     "Points: "+str((self.cards_on_ace*self.point_increment)+self.starting_points))
         self.canvas.tag_raise("face_up")
-        self.restart_game_button.config(state="normal")
-        self.redo_last_move_button.config(state="normal")
+        self.restart_game_button.enable()
+        self.redo_last_move_button.enable()
         try:
             last_move = self.history[-1]
         except:
             self.undo_last_move_button.disable()
             self.restart_game_button.disable()
-        self.deal_next_card_button.config(state="normal")
+        self.deal_next_card_button.enable()
         if self.total_redeals != "unlimited":
             if self.stock_left < 1 and (self.total_redeals + self.redeals_left - 1) == 0:
                 self.deal_next_card_button.disable()
@@ -1763,6 +2011,7 @@ class SolitareGameFrame(tk.Frame):
         self.update_deal_button()
 
     def check_move_validity(self, current_card, last_card, ace_slot):
+        #return True#######################################
         if ace_slot:
             if "clubs" in current_card and "clubs" not in last_card:
                 return False
@@ -1866,7 +2115,7 @@ class SolitareGameFrame(tk.Frame):
 
         self.canvas.tag_unbind(tag_a, "<Button-1>")
 
-        if self.movetype == "Accessability Mode":
+        if self.movetype == "Accessibility Mode":
             self.canvas.tag_unbind(tag_a, "<Enter>")
             self.canvas.tag_unbind(tag_a, "<Leave>")
             self.canvas.tag_bind(tag_a, "<Enter>", self.enter_card)
@@ -1883,8 +2132,8 @@ class SolitareGameFrame(tk.Frame):
 
         self.canvas.tag_raise(self.canvas.find_withtag(tag_a))
 
-        self.undo_last_move_button.config(state="normal")
-        self.restart_game_button.config(state="normal")
+        self.undo_last_move_button.enable()
+        self.restart_game_button.enable()
         self.redo_last_move_button.disable()
 
         self.update_deal_button()
@@ -1916,7 +2165,7 @@ class SolitareGameFrame(tk.Frame):
                 card = self.canvas.gettags(card)[0]
 
                 self.canvas.tag_unbind(card, "<Button-1>")
-                if self.movetype == "Accessability Mode":
+                if self.movetype == "Accessibility Mode":
                     self.canvas.tag_unbind(card, "<Enter>")
                     self.canvas.tag_unbind(card, "<Leave>")
                     self.canvas.tag_bind(card, "<Enter>", self.enter_stack)
@@ -1939,8 +2188,8 @@ class SolitareGameFrame(tk.Frame):
             for i in (self.canvas.find_overlapping(*self.canvas.bbox("empty_cardstack_slot"))):
                 self.stock_left += 1
             self.stock_label.config(text="Stock left: "+str(self.stock_left))
-            self.undo_last_move_button.config(state="normal")
-            self.restart_game_button.config(state="normal")
+            self.undo_last_move_button.enable()
+            self.restart_game_button.enable()
             self.redo_last_move_button.config(state="disabled")
             self.update_deal_button()
 
@@ -1949,9 +2198,9 @@ class SolitareGameFrame(tk.Frame):
             if self.stock_left < 1 and (self.total_redeals + self.redeals_left - 1) == 0:
                 self.deal_next_card_button.disable()
             else:
-                self.deal_next_card_button.config(state="normal")
+                self.deal_next_card_button.enable()
         else:
-            self.deal_next_card_button.config(state="normal")
+            self.deal_next_card_button.enable()
         if self.stock_left == 0:
             self.unbind_all("<Control-d>")
             self.bind_all("<Control-d>", lambda event=None: self.refill_card_stack(event))
@@ -1999,7 +2248,6 @@ class SolitareGameFrame(tk.Frame):
 
     def highlight_available_cards(self):
         try:
-            last_image_location = self.current_image_location
             returnval = True
             bbox = list(self.canvas.bbox(self.canvas.find_withtag("current")))
             bbox[0] = int(bbox[0]) - 15
@@ -2059,7 +2307,6 @@ class SolitareGameFrame(tk.Frame):
                     ypos = moving_count + \
                         (int(last_image_location[1]) -
                          int(self.canvas.coords(item)[1]))
-
                     self.canvas.move(item, xpos, ypos)
                     moving_count += 20
             return
@@ -2194,7 +2441,7 @@ class SolitareGameFrame(tk.Frame):
         overlapping = False
         ace_slot = False
         returnval = False
-
+                
         over_ace_slot = False
         for card in self.canvas.find_overlapping(*self.canvas.bbox(current_image)):
             if "empty_ace_slot" in self.canvas.gettags(card):
@@ -2249,25 +2496,25 @@ class SolitareGameFrame(tk.Frame):
         elif overlapping:
             return returnval
         elif "king" in last_active_card and "empty_slot" in current_image_tags:
-            returnval = True
-            return returnval
+            return True
         elif self.check_move_validity(tag_a, last_active_card, ace_slot):
-            returnval = True
-            return returnval
+            return True
         else:
             return returnval
 
     def card_onclick(self, event):
-        self.initiate_game()
+        self.initiate_game(False)
         self.current_image = current_image = self.canvas.find_withtag(
             "current")
         self.current_image_tags = current_image_tags = self.canvas.gettags(
             current_image)
-        if self.movetype == "Accessability Mode":
+        if self.movetype == "Accessibility Mode":
             if "rect" in self.current_image_tags:
                 return
             elif "()" in str(self.current_image_tags):
                 return
+        if len(current_image) > 1:
+            current_image = current_image[0]
         self.current_image_location = self.canvas.coords(current_image)
 
         self.current_image_bbox = current_image_bbox = self.canvas.bbox(
@@ -2345,7 +2592,7 @@ class SolitareGameFrame(tk.Frame):
                 self.end_onclick(event=event)
 
     def end_onclick(self, event, current_tag_name="current", pass_variable_updates=False):
-        self.initiate_game()
+        self.initiate_game(False)
         self.canvas.tag_unbind("face_up", "<Enter>")
         self.canvas.tag_unbind("card_below_rect", "<Enter>")
         self.canvas.dtag("card_below_rect")
@@ -2396,12 +2643,12 @@ class SolitareGameFrame(tk.Frame):
                 self.canvas.bbox(self.last_active_card))
             if self.larger_cards:
                 last_active_card_bbox_list[1] = int(
-                    last_active_card_bbox_list[1])+90
+                    last_active_card_bbox_list[1])+100
             else:
                 last_active_card_bbox_list[1] = int(
-                    last_active_card_bbox_list[1])+60
+                    last_active_card_bbox_list[1])+70
             last_active_card_bbox_list[3] = int(
-                last_active_card_bbox_list[3])-25
+                last_active_card_bbox_list[3])-20
             last_active_card_bbox_list = tuple(last_active_card_bbox_list)
             self.last_active_card_overlapping = self.canvas.find_overlapping(
                 *last_active_card_bbox_list)
@@ -2442,7 +2689,7 @@ class SolitareGameFrame(tk.Frame):
                     self.create_rectangle(*positions, fill="blue", alpha=.3)
                 else:
                     self.create_rectangle(*positionsb, fill="blue", alpha=.3)
-                if self.movetype == "Accessability Mode":
+                if self.movetype == "Accessibility Mode":
                     self.canvas.tag_unbind("face_up", "<Enter>")
                     self.canvas.tag_bind(
                         "rect", "<Enter>", self.enter_hover_on_rect)
@@ -2552,20 +2799,24 @@ class SolitareGameFrame(tk.Frame):
                 last_active_card)
             xpos = int(
                 self.current_image_location[0]) - int(last_active_card_coordinates[0])
-            ypos = self.card_drawing_count + \
+            ypos = self.card_drawing_count * self.height_skew + \
                 (int(self.current_image_location[1]) -
                  int(last_active_card_coordinates[1]))
             self.canvas.move(last_active_card, xpos, ypos)
             self.canvas.tag_raise(last_active_card)
+
             if event == "send_cards_to_ace":
                 self.canvas.tag_raise("cardsender_highlight")
                 self.card_moved_to_ace_by_sender += 1
             if self.movetype != "Drag":
+                last_active_card_coordinates[1] = last_active_card_coordinates[1] / self.height_skew
                 history_to_add = ["move_card_srv", empty_ace_slot_found, new_card_on_ace,
                                   self.last_active_card, last_active_card_coordinates, self.tag_a]
             else:
+                coords = list(self.last_active_card_coordinates[0])
+                coords[1] = coords[1] / self.height_skew
                 history_to_add = ["move_card_srv", empty_ace_slot_found, new_card_on_ace, self.last_active_card,
-                                  self.last_active_card_coordinates[0], self.current_image]
+                                  coords, self.current_image]
         else:
             flipped_cards = []
             moved_cards = {}
@@ -2577,7 +2828,7 @@ class SolitareGameFrame(tk.Frame):
                         "', 'face_down')", "").replace("', 'face_up')", "")
                     self.canvas.itemconfig(
                         card_values, image=self.dict_of_cards[tag_a], tag=(tag_a, "face_up"))
-                    if self.movetype == "Accessability Mode":
+                    if self.movetype == "Accessibility Mode":
                         self.canvas.tag_bind(
                             tag_a, "<Enter>", self.enter_card)
                         self.canvas.tag_bind(
@@ -2604,27 +2855,28 @@ class SolitareGameFrame(tk.Frame):
                     card_location = self.canvas.coords(card)
                     xpos = int(
                         self.current_image_location[0]) - int(card_location[0])
-                    ypos = self.card_drawing_count + \
-                        (int(
-                            self.current_image_location[1]) - int(card_location[1]))
+                    yincrease = self.card_drawing_count*self.height_skew
+                    ypos = (yincrease + \
+                        (int(self.current_image_location[1]) - int(card_location[1])))
                     self.canvas.move(card, xpos, ypos)
                     self.canvas.tag_raise(card)
                     if event == "send_cards_to_ace":
                         self.canvas.tag_raise("cardsender_highlight")
                         self.card_moved_to_ace_by_sender += 1
                     self.card_drawing_count += 20
+                    coords = self.last_active_card_coordinates[self.card_stack_list.index(card)]
+                    coords[0] = coords[0] - self.loc_skew
+                    coords[1] = coords[1] / self.height_skew
                     moved_cards[str(self.canvas.gettags(self.canvas.find_withtag(card))).replace("('", "").replace("', 'face_down')", "").replace(
-                        "', 'face_up')", "").replace("', 'face_up', 'current')", "")] = self.last_active_card_coordinates[self.card_stack_list.index(card)]
+                        "', 'face_up')", "").replace("', 'face_up', 'current')", "")] = coords
             history_to_add = ["move_card", new_card_on_ace, moved_cards,
                               self.card_drawing_count, flipped_cards, self.current_image]
         self.card_stack_list = ""
         self.last_active_card = ""
 
         if self.cards_on_ace == 52:
-            if self.win != None:
+            if self.sending_cards_label.winfo_ismapped():
                 self.canvas.delete("cardsender_highlight")
-                self.win.destroy()
-                self.win = None
                 self.card_moved_to_ace_by_sender = 0
                 self.stopwatch.freeze(True)
             self.history = []
@@ -2638,8 +2890,8 @@ class SolitareGameFrame(tk.Frame):
                 exit()
 
         self.history.append(history_to_add)
-        self.undo_last_move_button.config(state="normal")
-        self.restart_game_button.config(state="normal")
+        self.undo_last_move_button.enable()
+        self.restart_game_button.enable()
         self.redo_last_move_button.disable()
         self.update_idletasks()
 
@@ -2670,10 +2922,9 @@ class SolitareGameFrame(tk.Frame):
 
 class CustomGameMaker(tk.Toplevel):
     def __init__(self, parent, **kwargs):
-        tk.Toplevel.__init__(self, parent, **kwargs)
+        tk.Toplevel.__init__(self, parent, background="#4f4f4f", **kwargs)
         self.title("Create Custom Game")
         self.resizable(False, False)
-        self.config(background="#b0acac")
 
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=0)
@@ -2707,30 +2958,30 @@ class CustomGameMaker(tk.Toplevel):
 
     def create_widgets(self):
         self.restart_game_button = tk.Checkbutton(
-            self, text="Enable restart game button", variable=self.restart_game_button_enabled, anchor="w", bg="#b0acac", activebackground="#706c6c")
+            self, text="Enable restart game button", variable=self.restart_game_button_enabled, anchor="w", bg="#4f4f4f", selectcolor="#4f4f4f",fg="#e3e3e3", activeforeground="#e3e3e3", activebackground="#706c6c", highlightthickness=0)
         self.undo_button = tk.Checkbutton(self, text="Enable undo/redo button",
-                                          variable=self.undo_last_move_button_enabled, anchor="w", bg="#b0acac", activebackground="#706c6c")
+                                          variable=self.undo_last_move_button_enabled, anchor="w", bg="#4f4f4f", selectcolor="#4f4f4f",fg="#e3e3e3", activeforeground="#e3e3e3", activebackground="#706c6c", highlightthickness=0)
         self.hint_button = tk.Checkbutton(
-            self, text="Enable hint button", variable=self.hint_button_enabled, anchor="w", bg="#b0acac", activebackground="#706c6c")
+            self, text="Enable hint button", variable=self.hint_button_enabled, anchor="w", bg="#4f4f4f", selectcolor="#4f4f4f",fg="#e3e3e3", activeforeground="#e3e3e3", activebackground="#706c6c", highlightthickness=0)
         self.stopwatch_button = tk.Checkbutton(
-            self, text="Show stopwatch", variable=self.show_stopwatch, anchor="w", bg="#b0acac", activebackground="#706c6c")
-        self.starting_points_entry = tk.Spinbox(self, from_=-1000000, to=1000000, increment=5, width=30, textvariable=self.starting_points,
-                                                relief="flat",  highlightbackground="black", highlightthickness=1, bg="#cccaca", buttonbackground="#cccacc")
-        self.point_increment_entry = tk.Spinbox(self, from_=-1000000, to=1000000, increment=1, width=30, textvariable=self.point_increment,
-                                                relief="flat",  highlightbackground="black", highlightthickness=1, bg="#cccaca", buttonbackground="#cccacc")
+            self, text="Show stopwatch", variable=self.show_stopwatch, anchor="w", bg="#4f4f4f", selectcolor="#4f4f4f",fg="#e3e3e3", activeforeground="#e3e3e3", activebackground="#706c6c", highlightthickness=0)
+        self.starting_points_entry = tk.Spinbox(self, from_=-1000000, to=1000000, increment=5, width=30, textvariable=self.starting_points, relief="flat", highlightbackground="#e3e3e3",
+                                          highlightthickness=1, bg="#cccaca", buttonbackground="#cccacc", disabledbackground="#cccaca", disabledforeground="grey")
+        self.point_increment_entry = tk.Spinbox(self, from_=-1000000, to=1000000, increment=1, width=30, textvariable=self.point_increment, relief="flat", highlightbackground="#e3e3e3",
+                                          highlightthickness=1, bg="#cccaca", buttonbackground="#cccacc", disabledbackground="#cccaca", disabledforeground="grey")
         self.infinite_redeals = tk.Checkbutton(
-            self, text="Infinite redeals", variable=self.unlimited_redeals, anchor="w", bg="#b0acac", activebackground="#706c6c")
+            self, text="Infinite redeals", variable=self.unlimited_redeals, anchor="w", bg="#4f4f4f", selectcolor="#4f4f4f",fg="#e3e3e3", activeforeground="#e3e3e3", activebackground="#706c6c", highlightthickness=0)
         self.redeals_label = tk.Label(
-            self, text="Total Redeals:", anchor="w", bg="#b0acac")
-        self.redeals_entry = tk.Spinbox(self, from_=1, to=1000000, increment=1, width=30, textvariable=self.total_redeals, relief="flat",  highlightbackground="black",
-                                        highlightthickness=1, bg="#cccaca", buttonbackground="#cccacc", disabledbackground="#cccaca", disabledforeground="grey")
-
-        self.save_button = tk.Button(self, text="Save", relief="solid", borderwidth=1,
-                                     command=self.save, bg="#b0acac", activebackground="#706c6c")
-        self.reset_button = tk.Button(self, text="Reset", relief="solid", width=10,
-                                      borderwidth=1, command=self.reset_all, bg="#b0acac", activebackground="#706c6c")
-        self.cancel_button = tk.Button(self, text="Cancel", relief="solid", borderwidth=1,
-                                       command=lambda: self.destroy(), bg="#b0acac", activebackground="#706c6c")
+            self, text="Total Redeals:", anchor="w", bg="#4f4f4f", fg="#e3e3e3")
+        self.redeals_entry = tk.Spinbox(self, from_=1, to=1000000, increment=1, width=30, textvariable=self.total_redeals, relief="flat", highlightbackground="#e3e3e3",
+                                          highlightthickness=1, bg="#cccaca", buttonbackground="#cccacc", disabledbackground="#cccaca", disabledforeground="grey")
+        self.bottom_frame = tk.Frame(self, background="#4f4f4f")
+        self.save_button = tk.Button(self.bottom_frame, text="Save", relief="solid", 
+                                     command=self.save, fg="#e3e3e3", activeforeground="#e3e3e3", bg="#4f4f4f", cursor="hand2", activebackground="#706c6c")
+        self.reset_button = tk.Button(self.bottom_frame, text="Reset", relief="solid",
+                                      command=self.reset_all, fg="#e3e3e3", activeforeground="#e3e3e3", bg="#4f4f4f", cursor="hand2", activebackground="#706c6c")
+        self.cancel_button = tk.Button(self.bottom_frame, text="Cancel", relief="solid", 
+                                       command=lambda: self.destroy(), fg="#e3e3e3", activeforeground="#e3e3e3", bg="#4f4f4f", cursor="hand2", activebackground="#706c6c")
 
     def config_widgets(self):
         self.starting_points_entry.config(validate="all", validatecommand=(
@@ -2763,8 +3014,8 @@ class CustomGameMaker(tk.Toplevel):
         self.wm_protocol("WM_DELETE_WINDOW", self.window_close)
 
     def grid_all(self):
-        tk.Label(self, text="Custom Game Creator", font=("Calibri", 10, "normal"), bg="#b0acac",
-                 fg="grey").grid(row=0, column=0, columnspan=3, padx=8, pady=2, sticky="ew")
+        #tk.Label(self, text="Custom Game Creator", font=("Calibri", 10, "normal"), bg="#4f4f4f", fg="#e3e3e3",
+        #         fg="grey").grid(row=0, column=0, columnspan=3, padx=8, pady=2, sticky="ew")
         self.restart_game_button.grid(
             row=1, column=0, columnspan=3, padx=8, pady=7, sticky="ew")
         self.undo_button.grid(row=2, column=0, padx=8,
@@ -2773,36 +3024,37 @@ class CustomGameMaker(tk.Toplevel):
                               columnspan=3, pady=7, sticky="ew")
         self.stopwatch_button.grid(
             row=4, column=0, padx=8, pady=7, columnspan=3, sticky="ew")
-        ttk.Separator(self).grid(row=5, column=0, columnspan=3,
-                                 padx=8, pady=5, sticky="ew")
-        tk.Label(self, text="Starting points:", anchor="w", bg="#b0acac").grid(
+        #ttk.Separator(self).grid(row=5, column=0, columnspan=3,
+        #                         padx=8, pady=5, sticky="ew")
+        tk.Label(self, text="Starting points:", anchor="w", bg="#4f4f4f", fg="#e3e3e3").grid(
             row=6, column=0, padx=8, pady=7, sticky="ew")
         self.starting_points_entry.grid(
             row=6, column=1, columnspan=2, padx=8, pady=7, sticky="ew")
-        tk.Label(self, text="Point increment:", anchor="w", bg="#b0acac").grid(
+        tk.Label(self, text="Point increment:", anchor="w", bg="#4f4f4f", fg="#e3e3e3").grid(
             row=7, column=0, padx=8, pady=7, sticky="ew")
         self.point_increment_entry.grid(
             row=7, column=1, columnspan=2, padx=8, pady=7, sticky="ew")
-        ttk.Separator(self).grid(row=8, column=0, columnspan=3,
-                                 padx=8, pady=5, sticky="ew")
+        #ttk.Separator(self).grid(row=8, column=0, columnspan=3,
+        #                         padx=8, pady=5, sticky="ew")
         self.infinite_redeals.grid(
             row=9, column=0, padx=8, columnspan=3, pady=7, sticky="ew")
         self.redeals_label.grid(row=10, column=0, padx=8, pady=7, sticky="ew")
         self.redeals_entry.grid(
-            row=10, column=1, columnspan=2, padx=4, pady=7, sticky="ew")
-        ttk.Separator(self).grid(row=11, column=0,
-                                 columnspan=3, padx=8, pady=5, sticky="ew")
-        self.cancel_button.grid(row=12, column=1, padx=4, pady=7, sticky="ew")
-        ttk.Separator(self, orient="vertical").grid(
-            row=12, column=0, padx=8, pady=5, sticky="nse")
-        self.reset_button.grid(row=12, column=0, padx=8, pady=7, sticky="w")
-        self.save_button.grid(row=12, column=2, padx=8, pady=7, sticky="ew")
+            row=10, column=1, columnspan=2, padx=8, pady=7, sticky="ew")
+        #ttk.Separator(self).grid(row=11, column=0,
+        #                         columnspan=3, padx=8, pady=5, sticky="ew")
+        #ttk.Separator(self, orient="vertical").grid(
+        #    row=12, column=0, padx=8, pady=5, sticky="nse")
+        self.bottom_frame.grid(row=12, column=0, columnspan=3, sticky="e")
+        self.cancel_button.grid(row=0, column=0, padx=8, pady=7, sticky="e")
+        self.save_button.grid(row=0, column=1, padx=8, pady=7, sticky="e")
+        self.reset_button.grid(row=0, column=2, padx=8, pady=7, sticky="e")
 
     def enter_button(self, event):
         event.widget.config(bg="#706c6c")
 
     def leave_button(self, event):
-        event.widget.config(bg="#b0acac")
+        event.widget.config(bg="#4f4f4f")
 
     def validate_entry(self, var):
         if var == "":
@@ -3144,23 +3396,77 @@ class Combobox(tk.Frame):
         event.widget.selection_clear(0, "end")
         event.widget.select_set(index)
 
-
-class Settings(tk.Toplevel):
+class Information(tk.Frame):
     def __init__(self, parent, **kwargs):
-        tk.Toplevel.__init__(self, parent, **kwargs)
-        self.title("TkSolitaire Settings")
-        self.resizable(False, False)
-        self.config(background="#b0acac")
+        tk.Frame.__init__(self, parent, background="#4f4f4f", **kwargs)
+        style = ttk.Style()
+        style.configure("TScrollbar",
+                        troughcolor="#4f4f4f",
+                        background="#4f4f4f",
+                        bordercolor="#4f4f4f")
+        style.map("TScrollbar",
+                background=[("active", "darkgray")])
+        self.rowconfigure(0, weight=1)
+        self.text = HtmlFrame(self, messages_enabled=False, on_link_click=lambda url: webbrowser.open(url), **kwargs)
+        self.grid_propagate(0)
+        self.text.grid_propagate(0)
+        self.text.load_html("""<style>body {background-color: #4f4f4f; color: #e3e3e3} a {color: #19beff} h4 {margin-bottom: -5px} hr {border-bottom-width: 0; border-top-width: 1px; border-color: grey} div {text-align: center} div p {margin-bottom: 10px}</style><body>
+                       <div><p style="font-size: 12px; margin-top: 0px; color:grey; margin-bottom:0">TkSolitaire V.1.9.2</p>
+                            <a style="font-size: 12px" href="https://github.com/Andereoo/TkSolitaire/">https://github.com/Andereoo/TkSolitaire/</a>
+                            <p>An embeddable and accessable solitaire game written in Tkinter and Python 3</p>
+                            </div>
+<h4>About Solitaire</h4><hr>
+<p>Solitaire is one of the most pleasurable pastimes for one person. Often called, "Patience," more than 150 Solitaire games have been devised.</p>
+<h4>The Pack</h4><hr>
+<p>Virtually all Solitaire games are played with one or more standard 52-card packs. Standard Solitaire uses one 52-card pack.</p>
+<h4>Object of the Game</h4><hr>
+<p>The first objective is to release and play into position certain cards to build up each foundation, in sequence and in suit, from the ace through the king. The ultimate objective is to build the whole pack onto the foundations, and if that can be done, the Solitaire game is won.</p>
+<h4>Rank of Cards</h4><hr>
+<p>The rank of cards in Solitaire games is: K (high), Q, J, 10, 9, 8, 7, 6, 5, 4, 3, 2, A (low).</p>
+<h4>The Deal</h4><hr>
+<p>There are four different types of piles in Solitaire:   </p>                     
+<ul>
+    <li>The Tableau: Seven piles that make up the main table.</li>
+    <li>The Foundations: Four piles on which a whole suit or sequence must be built up. In most Solitaire games, the four aces are the bottom card or base of the foundations. The foundation piles are hearts, diamonds, spades, and clubs.</li>
+    <li>The Stock (or “Hand”) Pile: If the entire pack is not laid out in a tableau at the beginning of a game, the remaining cards form the stock pile from which additional cards are brought into play according to the rules.</li>
+    <li>The Talon (or “Waste”) Pile: Cards from the stock pile that have no place in the tableau or on foundations are laid face up in the waste pile.</li>
+</ul>                   
+<p>To form the tableau, seven piles need to be created. Starting from left to right, place the first card face up to make the first pile, deal one card face down for the next six piles. Starting again from left to right, place one card face up on the second pile and deal one card face down on piles three through seven. Starting again from left to right, place one card face up on the third pile and deal one card face down on piles four through seven. Continue this pattern until pile seven has one card facing up on top of a pile of six cards facing down.</p>
+<p>The remaining cards form the stock (or “hand”) pile and are placed above the tableau.</p>
+<p>When starting out, the foundations and waste pile do not have any cards.</p>
+<h4>The Play</h4><hr>
+<p>The initial array may be changed by "building" - transferring cards among the face-up cards in the tableau. Certain cards of the tableau can be played at once, while others may not be played until certain blocking cards are removed. For example, of the seven cards facing up in the tableau, if one is a nine and another is a ten, you may transfer the nine to on top of the ten to begin building that pile in sequence. Since you have moved the nine from one of the seven piles, you have now unblocked a face down card; this card can be turned over and now is in play.</p>
+<p>As you transfer cards in the tableau and begin building sequences, if you uncover an ace, the ace should be placed in one of the foundation piles. The foundations get built by suit and in sequence from ace to king.</p>
+<p>Continue to transfer cards on top of each other in the tableau in sequence. If you can’t move any more face up cards, you can utilize the stock pile by flipping over the first card. This card can be played in the foundations or tableau. If you cannot play the card in the tableau or the foundations piles, move the card to the waste pile and turn over another card in the stock pile.</p>
+<p>If a vacancy in the tableau is created by the removal of cards elsewhere it is called a “space”, and it is of major importance in manipulating the tableau. If a space is created, it can only be filled in with a king. Filling a space with a king could potentially unblock one of the face down cards in another pile in the tableau.</p>
+<p style="margin-bottom: 0px">Continue to transfer cards in the tableau and bring cards into play from the stock pile until all the cards are built in suit sequences in the foundation piles to win!</p>
+<p style="float: right; font-size: 12px; margin-top: 0">From <a href="https://bicyclecards.com/how-to-play/solitaire">bicyclecards.com</a></p>
+</body>
+""")
+        self.text.grid(row=0, column=0, sticky="nsew")
+        closebtn = tk.Button(self, text="Close", relief="solid", borderwidth=1, cursor="hand2", command=self.close, fg="#e3e3e3", activeforeground="#e3e3e3", bg="#4f4f4f", activebackground="#706c6c")
+        closebtn.grid(row=1, column=0, padx=8, pady=7, sticky="e")
+        closebtn.bind("<Enter>", self.enter_button)
+        closebtn.bind("<Leave>", self.leave_button)
+        
+    def enter_button(self, event):
+        event.widget.config(bg="#706c6c")
+
+    def leave_button(self, event):
+        event.widget.config(bg="#4f4f4f")
+
+    def close(self):
+        self.event_generate("<<InformationClose>>")
+
+class Settings(tk.Frame):
+    def __init__(self, parent, **kwargs):
+        tk.Frame.__init__(self, parent, **kwargs)
+        self.config(background="#4f4f4f")
 
         self.columnconfigure(0, weight=1)
-        self.columnconfigure(1, weight=2)
-        self.columnconfigure(2, weight=1)
-        self.columnconfigure(3, weight=1)
 
         self.custom_game_settings = None
         self.updated_settings = False
-
-        self.wm_protocol("WM_DELETE_WINDOW", self.delete_window)
 
         try:
             self.settings = settings = json.load(open(os.path.dirname(
@@ -3214,80 +3520,75 @@ class Settings(tk.Toplevel):
             value=larger_cards)
         self.continuous_points_button_var = tk.BooleanVar(
             value=continuous_points)
-        self.movetype_chooser_options = ["Drag", "Click", "Accessability Mode"]
+        self.movetype_chooser_options = ["Drag", "Click", "Accessibility Mode"]
         self.gametype_chooser_options = [
             "TkSolitaire Classic", "Vegas", "Practice Mode", "Custom"]
 
         self.create_widgets()
         self.config_widgets()
-        self.grid_all()
+        self.grid_propagate(0)
 
-        try:
-            self.iconbitmap(os.path.dirname(
-                os.path.abspath(__file__)) + "/resources/icon.ico")
-        except:
-            icon = tk.PhotoImage(file=(os.path.dirname(
-                os.path.abspath(__file__)) + "/resources/icon.png"))
-            self.tk.call('wm', 'iconphoto', self._w, icon)
+        self.grid_all()
 
     def create_widgets(self):
         style = ttk.Style()
-        style.configure("TScale", background="#b0acac")
-        self.intro_label = tk.Label(self, text="TkSolitaire Settings", font=(
-            "Calibri", 10, "normal"), bg="#b0acac", fg="grey")
-        self.movetype_chooser = Combobox(self, self.movetype_chooser_options, {"height": 21, "width": 200, "bg": "#cccaca", "highlightbackground": "black", "highlightthickness": 1},
+        style.configure("TScale", background="#4f4f4f")
+        self.text = HtmlFrame(self, messages_enabled=False, on_link_click=lambda url: webbrowser.open(url), selection_enabled=False)
+        #self.intro_label = tk.Label(self, text="TkSolitaire Settings", font=(
+        #    "Calibri", 10, "normal"), bg="#4f4f4f", fg="#e3e3e3", fg="grey") #4f4f4f; color: #e3e3e3; 19beff
+        self.movetype_chooser = Combobox(self, self.movetype_chooser_options, {"height": 21, "width": 200, "bg": "#cccaca", "highlightbackground": "#e3e3e3", "highlightthickness": 1},
                                          {"textvariable": self.movetype_chooser_var, "anchor": "w",
                                              "padx": 2, "background": "#cccaca", "cursor": "arrow"},
                                          {"width": 10, "relief": "flat",
                                           "activebackground": "#b0b2bf", "bg": "#cccaca"},
-                                         {"relief": "flat", "highlightbackground": "black", "highlightthickness": 1, "bg": "#d4d2d2"})
-        self.gametype_chooser = Combobox(self, self.gametype_chooser_options, {"height": 21, "width": 200, "bg": "#cccaca", "highlightbackground": "black", "highlightthickness": 1},
+                                         {"relief": "flat", "highlightbackground": "#e3e3e3", "highlightthickness": 1, "bg": "#d4d2d2"})
+        self.gametype_chooser = Combobox(self, self.gametype_chooser_options, {"height": 21, "width": 200, "bg": "#cccaca", "highlightbackground": "#e3e3e3", "highlightthickness": 1},
                                          {"textvariable": self.gametype_chooser_var, "anchor": "w",
                                              "padx": 2, "background": "#cccaca", "cursor": "arrow"},
                                          {"width": 10, "relief": "flat",
                                           "activebackground": "#b0b2bf", "bg": "#cccaca"},
-                                         {"relief": "flat", "highlightbackground": "black", "highlightthickness": 1, "bg": "#d4d2d2"})
-        self.movetype_label = tk.Label(self,
-                                       text="Move Type:", bg="#b0acac", fg="black")
-        self.gametype_label = tk.Label(self,
-                                       text="Game Type:", bg="#b0acac", fg="black")
+                                         {"relief": "flat", "highlightbackground": "#e3e3e3", "highlightthickness": 1, "bg": "#d4d2d2"})
+        #self.movetype_label = tk.Label(self,
+        #                               text="Move Type:", bg="#4f4f4f", fg="#e3e3e3", fg="#e3e3e3")
+        #self.gametype_label = tk.Label(self,
+        #                               text="Game Type:", bg="#4f4f4f", fg="#e3e3e3", fg="#e3e3e3")
 
         self.hovertime_scale = ttk.Scale(self, from_=0, to=2000, variable=self.hovertime_scale_var,
                                          value=self.hovertime_scale_var.get(), command=self.hovertime_scale_change)
         self.cardsender_scale = ttk.Scale(self, from_=0, to=2000, variable=self.cardsender_scale_var,
                                           value=self.cardsender_scale_var.get(), command=self.cardsender_scale_change)
-        self.hovertime_entry = tk.Spinbox(self, from_=0, to=2000, increment=100, textvariable=self.hovertime_scale_var, relief="flat", highlightbackground="black",
+        self.hovertime_entry = tk.Spinbox(self, from_=0, to=2000, increment=100, textvariable=self.hovertime_scale_var, relief="flat", highlightbackground="#e3e3e3",
                                           highlightthickness=1, bg="#cccaca", buttonbackground="#cccacc", disabledbackground="#cccaca", disabledforeground="grey")
         self.cardsender_entry = tk.Spinbox(self, from_=0, to=2000, increment=100, textvariable=self.cardsender_scale_var,
-                                           relief="flat",  highlightbackground="black", highlightthickness=1, bg="#cccaca", buttonbackground="#cccacc")
-        self.hover_after_label = tk.Label(self,
-                                          text="Auto click after:                 \n(Accessibility Mode only)", anchor="w", bg="#b0acac")
-        self.card_stack_hover_after_label = tk.Label(self,
-                                                     text="Game solver wait time:", bg="#b0acac")
+                                           relief="flat",  highlightbackground="#e3e3e3", highlightthickness=1, bg="#cccaca", buttonbackground="#cccacc")
+        #self.hover_after_label = tk.Label(self, fg="#e3e3e3",
+        #                                  text="Auto click after:                 \n(Accessibility Mode only)", anchor="w", bg="#4f4f4f", fg="#e3e3e3")
+        #self.card_stack_hover_after_label = tk.Label(self, fg="#e3e3e3",
+        #                                             text="Game solver wait time:", bg="#4f4f4f", fg="#e3e3e3")
 
-        self.python_card_button = tk.Radiobutton(self, text="Python card", variable=self.card_back_var, highlightthickness=0,
-                                               value="python_card_back", anchor="w", bg="#b0acac", activebackground="#706c6c")
-        self.traditional_card_button = tk.Radiobutton(self, text="Classic card", variable=self.card_back_var, highlightthickness=0,
-                                                      value="card_back", anchor="w", bg="#b0acac", activebackground="#706c6c")
-        self.larger_cards_button = tk.Checkbutton(self, highlightthickness=0,
-                                                       text="Use larger cards   (will require game restart)", variable=self.larger_cards_button_var, anchor="w", bg="#b0acac", activebackground="#706c6c")
+        self.python_card_button = tk.Radiobutton(self, text="Python card", variable=self.card_back_var, highlightthickness=0, fg="#e3e3e3", activeforeground="#e3e3e3", selectcolor="#4f4f4f",
+                                               value="python_card_back", anchor="w", bg="#4f4f4f", activebackground="#706c6c")
+        self.traditional_card_button = tk.Radiobutton(self, text="Classic card", variable=self.card_back_var, highlightthickness=0, fg="#e3e3e3", activeforeground="#e3e3e3", selectcolor="#4f4f4f",
+                                                      value="card_back", anchor="w", bg="#4f4f4f", activebackground="#706c6c")
+        self.larger_cards_button = tk.Checkbutton(self, highlightthickness=0, fg="#e3e3e3", activeforeground="#e3e3e3", selectcolor="#4f4f4f",
+                                                       text="Use larger cards   (will require game restart)", variable=self.larger_cards_button_var, anchor="w", bg="#4f4f4f", activebackground="#706c6c")
 
-        self.color_entry_label = tk.Label(self,
-                                          text="Canvas Background Color:", bg="#b0acac")
-        self.color_entry = tk.Entry(self, textvariable=self.canvas_color_var, state='disabled', relief="flat", highlightbackground="black", highlightthickness=1,
-                                    bg=self.canvas_color_var.get(), disabledbackground=self.canvas_color_var.get(), disabledforeground=self.generate_altered_colour(self.canvas_color_var.get()), cursor="arrow")
+        #self.color_entry_label = tk.Label(self, fg="#e3e3e3",
+        #                                  text="Canvas background color:", bg="#4f4f4f", fg="#e3e3e3")
+        self.color_entry = tk.Entry(self, textvariable=self.canvas_color_var, state='disabled', relief="flat", highlightbackground="#000000", highlightthickness=1,
+                                    bg=self.canvas_color_var.get(), disabledbackground=self.canvas_color_var.get(), disabledforeground=self.generate_altered_colour(self.canvas_color_var.get()), cursor="hand2")
 
-        self.continuous_points_button = tk.Checkbutton(self, highlightthickness=0,
-                                                       text="Continuous Points (Vegas mode only)", variable=self.continuous_points_button_var, anchor="w", bg="#b0acac", activebackground="#706c6c")
+        self.continuous_points_button = tk.Checkbutton(self, highlightthickness=0, selectcolor="#4f4f4f",
+                                                       text="Continuous Points (Vegas mode only)", variable=self.continuous_points_button_var, anchor="w", bg="#4f4f4f", fg="#e3e3e3", activebackground="#706c6c")
 
-        self.header_button = tk.Checkbutton(self,
-                                            text="Show Header", variable=self.header_button_var, highlightthickness=0, anchor="w", bg="#b0acac", activebackground="#706c6c")
-        self.footer_button = tk.Checkbutton(self,
-                                            text="Show Footer", variable=self.footer_button_var, highlightthickness=0, anchor="w", bg="#b0acac", activebackground="#706c6c")
-        self.save_button = tk.Button(self, text="Save", relief="solid", borderwidth=1,
-                                     command=self.save, bg="#b0acac", activebackground="#706c6c")
-        self.reset_button = tk.Button(self, text="Reset", relief="solid", borderwidth=1,
-                                      command=self.reset_all, bg="#b0acac", activebackground="#706c6c")
+        self.header_button = tk.Checkbutton(self, fg="#e3e3e3", activeforeground="#e3e3e3", selectcolor="#4f4f4f",
+                                            text="Show Header", variable=self.header_button_var, highlightthickness=0, anchor="w", bg="#4f4f4f", activebackground="#706c6c")
+        self.footer_button = tk.Checkbutton(self, fg="#e3e3e3", activeforeground="#e3e3e3", selectcolor="#4f4f4f",
+                                            text="Show Footer", variable=self.footer_button_var, highlightthickness=0, anchor="w", bg="#4f4f4f", activebackground="#706c6c")
+        self.save_button = tk.Button(self, text="Save", cursor="hand2", relief="solid", borderwidth=1, fg="#e3e3e3", activeforeground="#e3e3e3",
+                                     command=self.close, bg="#4f4f4f", activebackground="#706c6c")
+        self.reset_button = tk.Button(self, text="Reset", cursor="hand2", relief="solid", borderwidth=1, fg="#e3e3e3", activeforeground="#e3e3e3",
+                                      command=self.reset_all, bg="#4f4f4f", activebackground="#706c6c")
 
     def config_widgets(self):
         self.movetype_chooser.bind(
@@ -3305,11 +3606,11 @@ class Settings(tk.Toplevel):
         else:
             self.continuous_points_button.bind("<Enter>", self.enter_button)
             self.continuous_points_button.bind("<Leave>", self.leave_button)
-        if self.movetype_chooser_var.get() != "Accessability Mode":
+        if self.movetype_chooser_var.get() != "Accessibility Mode":
             self.hovertime_scale.state(["disabled"])
             self.hovertime_entry.config(
                 state="disabled", highlightbackground="grey")
-            self.hover_after_label.config(state="disabled")
+            #self.hover_after_label.config(state="disabled")
 
         self.python_card_button.bind("<Enter>", self.enter_button)
         self.traditional_card_button.bind("<Enter>", self.enter_button)
@@ -3349,70 +3650,38 @@ class Settings(tk.Toplevel):
 
     def leave_entry(self, event):
         if event.widget["state"] == "normal":
-            event.widget.config(highlightbackground="black")
+            event.widget.config(highlightbackground="#e3e3e3")
 
     def enter_combo(self, event):
         event.widget.config(highlightbackground="grey")
 
     def leave_combo(self, event):
-        event.widget.config(highlightbackground="black")
+        event.widget.config(highlightbackground="#e3e3e3")
 
     def grid_all(self):
-        self.intro_label.grid(row=0, column=0, columnspan=4,
-                              padx=8, pady=2, sticky="ew")
-        tk.Label(self, text="Game:", font=("Calibri", 11, "bold"), bg="#b0acac", fg="blue").grid(
-            row=1, column=0, columnspan=2, padx=8, pady=2, sticky="w")
-        self.movetype_label.grid(
-            row=2, column=0, columnspan=2, padx=8, pady=7, sticky="w")
-        self.movetype_chooser.grid(
-            row=2, column=1, columnspan=3, padx=8, pady=7, sticky="ew")
-        self.gametype_label.grid(
-            row=3, column=0, columnspan=2, padx=8, pady=7,  sticky="w")
-        self.gametype_chooser.grid(
-            row=3, column=1, columnspan=3, padx=8, pady=7, sticky="ew")
-        ttk.Separator(self).grid(row=4, column=0, columnspan=4,
-                                 padx=6, pady=5, sticky="ew")
-        tk.Label(self, text="Timing:", font=("Calibri", 11, "bold"), bg="#b0acac", fg="blue").grid(
-            row=5, column=0, columnspan=2, padx=8, pady=2, sticky="w")
-        self.hover_after_label.grid(
-            row=6, column=0, padx=8, pady=7, sticky="w")
-        self.hovertime_scale.grid(
-            row=6, column=1, columnspan=2, padx=8, pady=7, sticky="ew")
-        self.hovertime_entry.grid(row=6, column=3, padx=8, pady=7, sticky="ew")
-        self.card_stack_hover_after_label.grid(
-            row=7, column=0, columnspan=2, padx=8, pady=7,  sticky="w")
-        self.cardsender_scale.grid(
-            row=7, column=1, columnspan=2, padx=8, pady=7, sticky="ew")
-        self.cardsender_entry.grid(
-            row=7, column=3, padx=8, pady=7, sticky="ew")
-        ttk.Separator(self).grid(row=8, column=0, columnspan=4,
-                                 padx=6, pady=5, sticky="ew")
-        tk.Label(self, text="Cards:", font=("Calibri", 11, "bold"), bg="#b0acac", fg="blue").grid(
-            row=9, column=0, columnspan=2, padx=8, pady=2, sticky="w")
-        self.python_card_button.grid(
-            row=10, column=0, columnspan=2, padx=8, pady=7, sticky="ew")
-        self.traditional_card_button.grid(
-            row=10, column=2, columnspan=2, padx=8, pady=7, sticky="ew")
-        self.larger_cards_button.grid(
-            row=11, column=0, columnspan=4, padx=8, pady=7, sticky="ew")
-        ttk.Separator(self).grid(row=12, column=0,
-                                 columnspan=4, padx=8, pady=5, sticky="ew")
-        self.color_entry_label.grid(row=13, column=0,
-                                    columnspan=2, padx=8, pady=5, sticky="w")
-        self.color_entry.grid(row=13, column=2,
-                              columnspan=2, padx=8, pady=5, sticky="ew")
-        ttk.Separator(self).grid(row=14, column=0,
-                                 columnspan=4, padx=8, pady=5, sticky="ew")
-        self.continuous_points_button.grid(
-            row=15, column=0, columnspan=4, padx=8, pady=7, sticky="ew")
-        self.header_button.grid(
-            row=16, column=0, columnspan=2, padx=8, pady=7, sticky="ew")
-        self.footer_button.grid(
-            row=16, column=2, columnspan=2, padx=8, pady=7, sticky="ew")
-        ttk.Separator(self).grid(row=17, column=0,
-                                 columnspan=4, padx=8, pady=5, sticky="ew")
-        self.save_button.grid(row=18, column=3, padx=8, pady=7, sticky="ew")
-        self.reset_button.grid(row=18, column=2, padx=8, pady=7, sticky="ew")
+        self.grid_rowconfigure(0, weight=1)
+        self.text.load_html("""<style>span, object {margin-top: 5px; margin-bottom: 5px} body {background-color: #4f4f4f; color: #e3e3e3; cursor: default} a {color: #19beff} h4 {margin-bottom: -5px} hr {margin-bottom: 10px; border-bottom-width: 0; border-top-width: 1px; border-color: grey} div p {margin-bottom: 10px}</style><body>
+                       <div style="text-align: center"><p style="font-size: 12px; margin-top: 0px; color:grey; margin-bottom:0">TkSolitaire V.1.9.2</p>
+                            </div>
+<h4>Game:</h4><hr>
+<table style="width: 100%"><tr><td><span style="vertical-align: middle;">Move type:</span></td><td style="width: 60%"><object style="vertical-align: middle; width:100%" data="""+str(self.movetype_chooser)+"""></object></td></tr>
+<tr><td><span style="vertical-align: middle;">Game type:</span></td><td style="width: 60%"><object style="vertical-align: middle; width:100%" data="""+str(self.gametype_chooser)+"""></object></td></tr></table>
+<h4 style="">Timing:</h4><hr>
+<table style="width: 100%"><tr><td><span style="vertical-align: middle;">Auto click after:<br>(Accessibility mode only)</span></td><td style="width: 60%"><object style="vertical-align: middle; width:30%" data="""+str(self.hovertime_scale)+"""></object><object style="vertical-align: middle; width:68%; padding-left:2%;" data="""+str(self.hovertime_entry)+"""></object></td></tr>
+<tr><td><span style="vertical-align: middle;">Game solver wait time:</span></td><td style="width: 60%"><object style="vertical-align: middle; width:30%" data="""+str(self.cardsender_scale)+"""></object><object style="vertical-align: middle; width:68%; padding-left:2%;" data="""+str(self.cardsender_entry)+"""></object></td></tr></table>
+<h4 style="">Cards:</h4><hr>
+<div style=""><object style="vertical-align: middle; width: 100%" data="""+str(self.larger_cards_button)+"""></object></div>
+<table style="width: 100%"><tr><td><object style="vertical-align: middle; width:100%" data="""+str(self.python_card_button)+"""></object></td><td><object style="vertical-align: middle; width:100%" data="""+str(self.traditional_card_button)+"""></object></td></tr></table></div>
+<hr style="">
+<table style="width: 100%"><tr><td><span style="vertical-align: middle;">Canvas background color:</span></td><td style="width: 60%"><object style="vertical-align: middle; width:100%" data="""+str(self.color_entry)+"""></object></td></tr></table>
+<hr style="margin-top: 10px">
+<div style=""><object style="vertical-align: middle; width: 100%" data="""+str(self.continuous_points_button)+"""></object></div>
+<table style="width: 100%"><tr><td><object style="vertical-align: middle; width:100%" data="""+str(self.header_button)+"""></object></td><td><object style="vertical-align: middle; width:100%" data="""+str(self.footer_button)+"""></object></td></tr></table></div>
+</body>
+""")
+        self.text.grid(row=0, column=0, sticky="nsew", columnspan=3)
+        self.save_button.grid(row=1, column=1, padx=8, pady=7, sticky="ew")
+        self.reset_button.grid(row=1, column=2, padx=8, pady=7, sticky="ew")
 
     def open_colorpicker(self, event):
         color = askcolor(parent=self, color=self.canvas_color_var.get(
@@ -3450,7 +3719,7 @@ class Settings(tk.Toplevel):
         self.cardsender_scale_var.set(600)
         self.hovertime_entry.config(
             state="disabled", highlightbackground="grey")
-        self.hover_after_label.config(state="disabled")
+        #self.hover_after_label.config(state="disabled")
         self.continuous_points_button.config(state="disabled")
         self.continuous_points_button_var.set(True)
         self.canvas_color_var.set("#103b0a")
@@ -3472,6 +3741,9 @@ class Settings(tk.Toplevel):
         widget.config(bg="#cccaca")
         widget.unbind("<Key>")
         widget.unbind("<Button-1>")
+
+    def close(self):
+        self.event_generate("<<SettingsClose>>")
 
     def save(self):
         settings = {}
@@ -3511,14 +3783,13 @@ class Settings(tk.Toplevel):
         self.updated_settings = True
         with open((os.path.dirname(os.path.abspath(__file__))+"/resources/settings.json"), "w") as handle:
             handle.write(str(settings).replace("'", '"'))
-        self.event_generate("<<SettingsClose>>")
-        self.destroy()
+        self.event_generate("<<SettingsSaved>>")
 
     def enter_button(self, event):
         event.widget.config(bg="#706c6c")
 
     def leave_button(self, event):
-        event.widget.config(bg="#b0acac")
+        event.widget.config(bg="#4f4f4f")
 
     def validate_entry(self, var, scale):
         if var == "":
@@ -3567,16 +3838,16 @@ class Settings(tk.Toplevel):
 
     def movetype_chooser_select(self, event):
         self.focus()
-        if self.movetype_chooser_var.get() == "Accessability Mode":
+        if self.movetype_chooser_var.get() == "Accessibility Mode":
             self.hovertime_scale.state(["!disabled"])
             self.hovertime_entry.config(
-                state="normal", highlightbackground="black")
-            self.hover_after_label.config(state="normal")
+                state="normal", highlightbackground="#e3e3e3")
+            #self.hover_after_label.config(state="normal")
         else:
             self.hovertime_scale.state(["disabled"])
             self.hovertime_entry.config(
                 state="disabled", highlightbackground="grey")
-            self.hover_after_label.config(state="disabled")
+            #self.hover_after_label.config(state="disabled")
 
     def delete_window(self, *args):
         if not self.updated_settings:
@@ -3624,8 +3895,6 @@ class Settings(tk.Toplevel):
                 elif save is None:
                     return
         self.event_generate("<<SettingsClose>>")
-        self.destroy()
-
 
 def main():
     window = SolitareGameWindow()
