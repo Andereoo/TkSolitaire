@@ -16,15 +16,18 @@ Windows users can download the installer from the releases page. Alternatively, 
 TkSolitaire can be embedded into a Tkinter app:
 
 ```python
-from TkSolitaire import SolitareGameFrame
+from TkSolitaire import SolitaireGameFrame
 import tkinter as tk
 
 root = tk.Tk()
-solitaire_frame = SolitareGameFrame(root)
+root.minsize(1300, 700)
+
+solitaire_frame = SolitaireGameFrame(root)
 solitaire_frame.pack(expand=True, fill="both")
+solitaire_frame.bind("<<WindowClose>>", lambda e: root.destroy())
 
 root.mainloop()
- ```
+```
  
 **Screenshots:**
 

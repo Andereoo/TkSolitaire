@@ -343,7 +343,7 @@ class ToolTip:
                 tw.destoy()
 
 
-class SolitareGameWindow(tk.Tk):
+class SolitaireGameWindow(tk.Tk):
     def __init__(self, **kwargs):
         tk.Tk.__init__(self, **kwargs)
 
@@ -352,7 +352,7 @@ class SolitareGameWindow(tk.Tk):
         #self.minsize(1500, 700)
         #self.geometry("1536x700")
 
-        solitaire_frame = SolitareGameFrame(self)
+        solitaire_frame = SolitaireGameFrame(self)
         solitaire_frame.pack(expand=True, fill="both")
 
         solitaire_frame.bind("<<WindowClose>>", self.close)
@@ -369,7 +369,7 @@ class SolitareGameWindow(tk.Tk):
         self.destroy()
 
 
-class SolitareGameFrame(tk.Frame):
+class SolitaireGameFrame(tk.Frame):
     def __init__(self, parent, **kwargs):
         tk.Frame.__init__(self, parent, **kwargs)
 
@@ -3410,7 +3410,7 @@ class Information(tk.Frame):
         self.grid_propagate(0)
         self.text.grid_propagate(0)
         self.text.load_html("""<style>body {background-color: #4f4f4f; color: #e3e3e3} a {color: #19beff} h4 {margin-bottom: -5px} hr {border-bottom-width: 0; border-top-width: 1px; border-color: grey} div {text-align: center} div p {margin-bottom: 10px}</style><body>
-                       <div><p style="font-size: 12px; margin-top: 0px; color:grey; margin-bottom:0">TkSolitaire V.1.9.2</p>
+                       <div><p style="font-size: 12px; margin-top: 0px; color:grey; margin-bottom:0">TkSolitaire V.1.10.0 (experimental)</p>
                             <a style="font-size: 12px" href="https://github.com/Andereoo/TkSolitaire/">https://github.com/Andereoo/TkSolitaire/</a>
                             <p>An embeddable and accessable solitaire game written in Tkinter and Python 3</p>
                             </div>
@@ -3660,7 +3660,7 @@ class Settings(tk.Frame):
     def grid_all(self):
         self.grid_rowconfigure(0, weight=1)
         self.text.load_html("""<style>span, object {margin-top: 5px; margin-bottom: 5px} body {background-color: #4f4f4f; color: #e3e3e3; cursor: default} a {color: #19beff} h4 {margin-bottom: -5px} hr {margin-bottom: 10px; border-bottom-width: 0; border-top-width: 1px; border-color: grey} div p {margin-bottom: 10px}</style><body>
-                       <div style="text-align: center"><p style="font-size: 12px; margin-top: 0px; color:grey; margin-bottom:0">TkSolitaire V.1.9.2</p>
+                       <div style="text-align: center"><p style="font-size: 12px; margin-top: 0px; color:grey; margin-bottom:0">TkSolitaire V.1.10.0 (experimental)</p>
                             </div>
 <h4>Game:</h4><hr>
 <table style="width: 100%"><tr><td><span style="vertical-align: middle;">Move type:</span></td><td style="width: 60%"><object style="vertical-align: middle; width:100%" data="""+str(self.movetype_chooser)+"""></object></td></tr>
@@ -3896,7 +3896,7 @@ class Settings(tk.Frame):
         self.event_generate("<<SettingsClose>>")
 
 def main():
-    window = SolitareGameWindow()
+    window = SolitaireGameWindow()
     window.mainloop()
 
 

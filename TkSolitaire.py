@@ -294,7 +294,7 @@ class ToolTip:
                 tw.destoy()
 
 
-class SolitareGameWindow(tk.Tk):
+class SolitaireGameWindow(tk.Tk):
     def __init__(self, **kwargs):
         tk.Tk.__init__(self, **kwargs)
 
@@ -306,7 +306,7 @@ class SolitareGameWindow(tk.Tk):
         self.title("TkSolitaire")
         self.minsize(1300, 500)
 
-        solitaire_frame = SolitareGameFrame(self)
+        solitaire_frame = SolitaireGameFrame(self)
         solitaire_frame.pack(expand=True, fill="both")
 
         try:
@@ -318,7 +318,7 @@ class SolitareGameWindow(tk.Tk):
             self.tk.call("wm", "iconphoto", self._w, icon)
 
 
-class SolitareGameFrame(tk.Frame):
+class SolitaireGameFrame(tk.Frame):
     def __init__(self, parent, **kwargs):
         tk.Frame.__init__(self, parent, **kwargs)
 
@@ -3628,7 +3628,7 @@ class Settings(tk.Toplevel):
 
 
 def main():
-    window = SolitareGameWindow()
+    window = SolitaireGameWindow()
     window.mainloop()
 
 
