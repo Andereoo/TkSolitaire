@@ -363,7 +363,6 @@ class SolitareGameWindow(tk.Tk):
         except:
             icon = tk.PhotoImage(file=(os.path.dirname(
                 os.path.abspath(__file__)) + "/resources/icon.png"))
-            print(icon)
             self.tk.call("wm", "iconphoto", self._w, icon)
         
     def close(self, *args):
