@@ -516,13 +516,13 @@ class SolitareGameFrame(tk.Frame):
         self.deal_next_card_button = deal_next_card_button = HoverButton(header, alt="Deal next card (Ctrl+D)", command=lambda event="deal_card_button": self.stack_onclick(
             event), image=self.convert_pictures("deal.png", main=False), **button_settings)
         self.undo_last_move_button = undo_last_move_button = HoverButton(
-            header, alt="Undo last Move (Ctrl+Z)", command=self.undo_move, state="disabled", image=self.convert_pictures("undo.png", main=False), **button_settings)
+            header, alt="Undo last move (Ctrl+Z)", command=self.undo_move, state="disabled", image=self.convert_pictures("undo.png", main=False), **button_settings)
         self.redo_last_move_button = redo_last_move_button = HoverButton(
-            header, alt="Redo last Move (Ctrl+Shift+Z)", command=self.redo_move, state="disabled", image=self.convert_pictures("redo.png", main=False), **button_settings)
+            header, alt="Redo last move (Ctrl+Shift+Z)", command=self.redo_move, state="disabled", image=self.convert_pictures("redo.png", main=False), **button_settings)
         self.hint_button = hint_button = HoverButton(
-            header, alt="Generate Hint (Ctrl+H)", command=self.generate_hint, image=self.convert_pictures("hint.png", main=False), **button_settings)
+            header, alt="Generate hint (Ctrl+H)", command=self.generate_hint, image=self.convert_pictures("hint.png", main=False), **button_settings)
         self.send_cards_up_button = send_cards_up_button = HoverButton(
-            header, alt="Send Cards to Aces (F5)", command=self.send_cards_up, image=self.convert_pictures("ol.png", main=False), **button_settings)
+            header, alt="Send cards to aces (F5)", command=self.send_cards_up, image=self.convert_pictures("ol.png", main=False), **button_settings)
         self.settings_button = settings_button = HoverButton(
             header, alt="Settings (F1)", command=self.open_settings, image=self.convert_pictures("settings.png", main=False), **button_settings)
         self.info_button = info_button = HoverButton(
@@ -3578,12 +3578,12 @@ class Settings(tk.Frame):
                                     bg=self.canvas_color_var.get(), disabledbackground=self.canvas_color_var.get(), disabledforeground=self.generate_altered_colour(self.canvas_color_var.get()), cursor="hand2")
 
         self.continuous_points_button = tk.Checkbutton(self, highlightthickness=0, selectcolor="#4f4f4f",
-                                                       text="Continuous Points (Vegas mode only)", variable=self.continuous_points_button_var, anchor="w", bg="#4f4f4f", fg="#e3e3e3", activebackground="#706c6c")
+                                                       text="Continuous points (Vegas mode only)", variable=self.continuous_points_button_var, anchor="w", bg="#4f4f4f", fg="#e3e3e3", activebackground="#706c6c")
 
         self.header_button = tk.Checkbutton(self, fg="#e3e3e3", activeforeground="#e3e3e3", selectcolor="#4f4f4f",
-                                            text="Show Header", variable=self.header_button_var, highlightthickness=0, anchor="w", bg="#4f4f4f", activebackground="#706c6c")
+                                            text="Show header", variable=self.header_button_var, highlightthickness=0, anchor="w", bg="#4f4f4f", activebackground="#706c6c")
         self.footer_button = tk.Checkbutton(self, fg="#e3e3e3", activeforeground="#e3e3e3", selectcolor="#4f4f4f",
-                                            text="Show Footer", variable=self.footer_button_var, highlightthickness=0, anchor="w", bg="#4f4f4f", activebackground="#706c6c")
+                                            text="Show footer", variable=self.footer_button_var, highlightthickness=0, anchor="w", bg="#4f4f4f", activebackground="#706c6c")
         self.save_button = tk.Button(self, text="Save", cursor="hand2", relief="solid", borderwidth=1, fg="#e3e3e3", activeforeground="#e3e3e3",
                                      command=self.close, bg="#4f4f4f", activebackground="#706c6c")
         self.reset_button = tk.Button(self, text="Reset", cursor="hand2", relief="solid", borderwidth=1, fg="#e3e3e3", activeforeground="#e3e3e3",
@@ -3666,7 +3666,7 @@ class Settings(tk.Frame):
 <table style="width: 100%"><tr><td><span style="vertical-align: middle;">Move type:</span></td><td style="width: 60%"><object style="vertical-align: middle; width:100%" data="""+str(self.movetype_chooser)+"""></object></td></tr>
 <tr><td><span style="vertical-align: middle;">Game type:</span></td><td style="width: 60%"><object style="vertical-align: middle; width:100%" data="""+str(self.gametype_chooser)+"""></object></td></tr></table>
 <h4 style="">Timing:</h4><hr>
-<table style="width: 100%"><tr><td><span style="vertical-align: middle;">Auto click after:<br>(Accessibility mode only)</span></td><td style="width: 60%"><object style="vertical-align: middle; width:30%" data="""+str(self.hovertime_scale)+"""></object><object style="vertical-align: middle; width:68%; padding-left:2%;" data="""+str(self.hovertime_entry)+"""></object></td></tr>
+<table style="width: 100%"><tr><td><span style="vertical-align: middle;">Auto click after:<br>(accessibility mode only)</span></td><td style="width: 60%"><object style="vertical-align: middle; width:30%" data="""+str(self.hovertime_scale)+"""></object><object style="vertical-align: middle; width:68%; padding-left:2%;" data="""+str(self.hovertime_entry)+"""></object></td></tr>
 <tr><td><span style="vertical-align: middle;">Game solver wait time:</span></td><td style="width: 60%"><object style="vertical-align: middle; width:30%" data="""+str(self.cardsender_scale)+"""></object><object style="vertical-align: middle; width:68%; padding-left:2%;" data="""+str(self.cardsender_entry)+"""></object></td></tr></table>
 <h4 style="">Cards:</h4><hr>
 <div style=""><object style="vertical-align: middle; width: 100%" data="""+str(self.larger_cards_button)+"""></object></div>
