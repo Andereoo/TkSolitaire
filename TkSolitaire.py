@@ -1,5 +1,5 @@
 # TkSolitaire, an embeddable and accessable solitaire game for Tkinter and Python 3
-# This code has had many growing pains and is quite a disaster, but hey, it works!
+# This code has had many growing pains and is a bit of a mess, but hey, it works!
 
 import json
 import os

@@ -1,5 +1,5 @@
 # TkSolitaire, an embeddable and accessable solitaire game for Tkinter and Python 3
-# This code has had many growing pains and is quite a disaster, but hey, it works!
+# This code has had many growing pains and is a bit of a mess, but hey, it works!
 
 # This version is a slightly updated version of the original TkSolitaire game. 
 # It has better support for window resizing, a nicer settings page, an information page, and the game finisher is much more responsive. 
@@ -1734,7 +1734,7 @@ class SolitaireGameFrame(tk.Frame):
     
     def continue_sending_cards(self):
         if not self.sending_cards_label.winfo_ismapped():
-            self.sending_cards_label["text"] = "Looking for cards.   Please wait:"
+            self.sending_cards_label["text"] = "Looking for cards.   Please wait."
             self.sending_cards_label.pack(side="left", padx=6, pady=4)
             self.redeal_label.pack_forget()
             self.stock_label.pack_forget()
@@ -2642,12 +2642,12 @@ class SolitaireGameFrame(tk.Frame):
                 self.canvas.bbox(self.last_active_card))
             if self.larger_cards:
                 last_active_card_bbox_list[1] = int(
-                    last_active_card_bbox_list[1])+100
+                    last_active_card_bbox_list[1]+80+20/self.height_skew)
             else:
                 last_active_card_bbox_list[1] = int(
-                    last_active_card_bbox_list[1])+70
+                    last_active_card_bbox_list[1]+70/self.height_skew)
             last_active_card_bbox_list[3] = int(
-                last_active_card_bbox_list[3])-20
+                last_active_card_bbox_list[3])#-(20*self.height_skew))
             last_active_card_bbox_list = tuple(last_active_card_bbox_list)
             self.last_active_card_overlapping = self.canvas.find_overlapping(
                 *last_active_card_bbox_list)
