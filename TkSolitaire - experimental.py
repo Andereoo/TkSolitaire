@@ -597,8 +597,9 @@ class SolitaireGameFrame(tk.Frame):
             stopwatch.pack(side="right", padx=6, pady=4)
 
     def fade_in(self, widget, count):
-        if widget == self.information: count += 5
-        else: count += 15
+        count += 5
+        #if widget == self.information: count += 5
+        #else: count += 15
 
         if count < 500:
             widget.place(x=self.canvas.winfo_width()-count)
@@ -619,9 +620,9 @@ class SolitaireGameFrame(tk.Frame):
         if self.move_flag:
             return
         self.initiate_game(close_popups=False)# close_popup()#continue_settings()
-        #if self.settings:
-        #    if self.settings.winfo_ismapped():
-        #        self.close_settings()
+        if self.settings:
+            if self.settings.winfo_ismapped() and self.settings.winfo_manager() == "grid":
+                self.settings.place(x=self.canvas.winfo_width(), y=self.canvas.winfo_y(), width=500, height=self.canvas.winfo_height())
         if not self.information:
             self.information = information = Information(self, width=500, height=self.canvas.winfo_height())
             information.place(x=self.canvas.winfo_width(), y=self.canvas.winfo_y())
@@ -649,8 +650,7 @@ class SolitaireGameFrame(tk.Frame):
     def close_information(self, *args, num=500):
         if self.information:
             if self.information.winfo_manager() == "grid":
-                self.information.config(width=500, height=self.canvas.winfo_height())
-                self.information.place(x=self.canvas.winfo_width(), y=self.canvas.winfo_y())
+                self.information.place(x=self.canvas.winfo_width(), y=self.canvas.winfo_y(), width=500, height=self.canvas.winfo_height())
                 self.information.update()
             self.fade_out(self.information, num)
             if (self.settings and not self.settings.winfo_ismapped()) or not self.settings:
@@ -662,9 +662,10 @@ class SolitaireGameFrame(tk.Frame):
         if self.move_flag:
             return
         self.initiate_game(close_popups=False)#close_popup()#continue_settings()
-        #if self.information:
-        #    if self.information.winfo_ismapped():
-        #        self.close_information()
+        if self.information:
+            if self.information.winfo_ismapped() and self.information.winfo_manager() == "grid":
+                self.information.place(x=self.canvas.winfo_width(), y=self.canvas.winfo_y(), width=500, height=self.canvas.winfo_height())
+                self.information.update()
         if not self.settings:
             self.settings = settings = Settings(self, width=500, height=self.canvas.winfo_height())
             settings.place(x=self.canvas.winfo_width(), y=self.canvas.winfo_y())
@@ -705,8 +706,8 @@ class SolitaireGameFrame(tk.Frame):
         settings = self.settings
         if settings:
             if self.settings.winfo_manager() == "grid":
-                self.settings.config(width=500, height=self.canvas.winfo_height())
-                self.settings.place(x=self.canvas.winfo_width(), y=self.canvas.winfo_y())
+                self.settings.place(x=self.canvas.winfo_width(), y=self.canvas.winfo_y(), width=500, height=self.canvas.winfo_height())
+                self.settings.update()
             settings.save()#delete_window()#destroy()
             settings.grid_propagate(0)
             self.fade_out(settings, num)
@@ -2975,12 +2976,12 @@ class CustomGameMaker(tk.Toplevel):
         self.redeals_entry = tk.Spinbox(self, from_=1, to=1000000, increment=1, width=30, textvariable=self.total_redeals, relief="flat", highlightbackground="#e3e3e3",
                                           highlightthickness=1, bg="#cccaca", buttonbackground="#cccacc", disabledbackground="#cccaca", disabledforeground="grey")
         self.bottom_frame = tk.Frame(self, background="#4f4f4f")
-        self.save_button = tk.Button(self.bottom_frame, text="Save", relief="solid", 
-                                     command=self.save, fg="#e3e3e3", activeforeground="#e3e3e3", bg="#4f4f4f", cursor="hand2", activebackground="#706c6c")
-        self.reset_button = tk.Button(self.bottom_frame, text="Reset", relief="solid",
-                                      command=self.reset_all, fg="#e3e3e3", activeforeground="#e3e3e3", bg="#4f4f4f", cursor="hand2", activebackground="#706c6c")
-        self.cancel_button = tk.Button(self.bottom_frame, text="Cancel", relief="solid", 
-                                       command=lambda: self.destroy(), fg="#e3e3e3", activeforeground="#e3e3e3", bg="#4f4f4f", cursor="hand2", activebackground="#706c6c")
+        self.save_button = tk.Button(self.bottom_frame, text="Save", cursor="hand2", relief="solid", borderwidth=1, padx=10, pady=1, fg="#e3e3e3", activeforeground="#e3e3e3",
+                                     command=self.save, bg="#4f4f4f", activebackground="#706c6c")
+        self.reset_button = tk.Button(self.bottom_frame, text="Reset", cursor="hand2", relief="solid", borderwidth=1, padx=10, pady=1, fg="#e3e3e3", activeforeground="#e3e3e3",
+                                      command=self.reset_all, bg="#4f4f4f", activebackground="#706c6c")
+        self.cancel_button = tk.Button(self.bottom_frame, text="Cancel", cursor="hand2", relief="solid", borderwidth=1, padx=10, pady=1, fg="#e3e3e3", activeforeground="#e3e3e3",
+                                       command=lambda: self.destroy(), bg="#4f4f4f", activebackground="#706c6c")
 
     def config_widgets(self):
         self.starting_points_entry.config(validate="all", validatecommand=(
@@ -3330,10 +3331,7 @@ class Combobox(tk.Frame):
         self.box = box = tk.Toplevel(self.parent)
         box.wm_overrideredirect(1)
         self.listbox = listbox = tk.Listbox(box, **self.listbox_args)
-        if os.name == "nt":
-            height_increment = 17
-        else:
-            height_increment = 19
+        height_increment = 23
         height = 0
         for item in self.values:
             listbox.insert("end", item)
@@ -3443,7 +3441,7 @@ class Information(tk.Frame):
 </body>
 """)
         self.text.grid(row=0, column=0, sticky="nsew")
-        closebtn = tk.Button(self, text="Close", relief="solid", borderwidth=1, cursor="hand2", command=self.close, fg="#e3e3e3", activeforeground="#e3e3e3", bg="#4f4f4f", activebackground="#706c6c")
+        closebtn = tk.Button(self, text="Close", relief="solid", borderwidth=1, padx=10, pady=1, cursor="hand2", command=self.close, fg="#e3e3e3", activeforeground="#e3e3e3", bg="#4f4f4f", activebackground="#706c6c")
         closebtn.grid(row=1, column=0, padx=8, pady=7, sticky="e")
         closebtn.bind("<Enter>", self.enter_button)
         closebtn.bind("<Leave>", self.leave_button)
@@ -3584,9 +3582,9 @@ class Settings(tk.Frame):
                                             text="Show header", variable=self.header_button_var, highlightthickness=0, anchor="w", bg="#4f4f4f", activebackground="#706c6c")
         self.footer_button = tk.Checkbutton(self, fg="#e3e3e3", activeforeground="#e3e3e3", selectcolor="#4f4f4f",
                                             text="Show footer", variable=self.footer_button_var, highlightthickness=0, anchor="w", bg="#4f4f4f", activebackground="#706c6c")
-        self.save_button = tk.Button(self, text="Save", cursor="hand2", relief="solid", borderwidth=1, fg="#e3e3e3", activeforeground="#e3e3e3",
+        self.save_button = tk.Button(self, text="Save", cursor="hand2", relief="solid", borderwidth=1, padx=10, pady=1, fg="#e3e3e3", activeforeground="#e3e3e3",
                                      command=self.close, bg="#4f4f4f", activebackground="#706c6c")
-        self.reset_button = tk.Button(self, text="Reset", cursor="hand2", relief="solid", borderwidth=1, fg="#e3e3e3", activeforeground="#e3e3e3",
+        self.reset_button = tk.Button(self, text="Reset", cursor="hand2", relief="solid", borderwidth=1, padx=10, pady=1, fg="#e3e3e3", activeforeground="#e3e3e3",
                                       command=self.reset_all, bg="#4f4f4f", activebackground="#706c6c")
 
     def config_widgets(self):
@@ -3663,19 +3661,19 @@ class Settings(tk.Frame):
                        <div style="text-align: center"><p style="font-size: 12px; margin-top: 0px; color:grey; margin-bottom:0">TkSolitaire V.1.10.0 (experimental)</p>
                             </div>
 <h4>Game:</h4><hr>
-<table style="width: 100%"><tr><td><span style="vertical-align: middle;">Move type:</span></td><td style="width: 60%"><object style="vertical-align: middle; width:100%" data="""+str(self.movetype_chooser)+"""></object></td></tr>
-<tr><td><span style="vertical-align: middle;">Game type:</span></td><td style="width: 60%"><object style="vertical-align: middle; width:100%" data="""+str(self.gametype_chooser)+"""></object></td></tr></table>
+<table style="width: 100%"><tr><td><span style="vertical-align: middle;">Move type:</span></td><td style="width: 60%"><object allowscrolling style="vertical-align: middle; width:100%" data="""+str(self.movetype_chooser)+"""></object></td></tr>
+<tr><td><span style="vertical-align: middle;">Game type:</span></td><td style="width: 60%"><object allowscrolling style="vertical-align: middle; width:100%" data="""+str(self.gametype_chooser)+"""></object></td></tr></table>
 <h4 style="">Timing:</h4><hr>
-<table style="width: 100%"><tr><td><span style="vertical-align: middle;">Auto click after:<br>(accessibility mode only)</span></td><td style="width: 60%"><object style="vertical-align: middle; width:30%" data="""+str(self.hovertime_scale)+"""></object><object style="vertical-align: middle; width:68%; padding-left:2%;" data="""+str(self.hovertime_entry)+"""></object></td></tr>
-<tr><td><span style="vertical-align: middle;">Game solver wait time:</span></td><td style="width: 60%"><object style="vertical-align: middle; width:30%" data="""+str(self.cardsender_scale)+"""></object><object style="vertical-align: middle; width:68%; padding-left:2%;" data="""+str(self.cardsender_entry)+"""></object></td></tr></table>
+<table style="width: 100%"><tr><td><span style="vertical-align: middle;">Auto click after:<br>(accessibility mode only)</span></td><td style="width: 60%"><object allowscrolling style="vertical-align: middle; width:30%" data="""+str(self.hovertime_scale)+"""></object><object allowscrolling style="vertical-align: middle; width:68%; padding-left:2%;" data="""+str(self.hovertime_entry)+"""></object></td></tr>
+<tr><td><span style="vertical-align: middle;">Game solver wait time:</span></td><td style="width: 60%"><object allowscrolling style="vertical-align: middle; width:30%" data="""+str(self.cardsender_scale)+"""></object><object allowscrolling style="vertical-align: middle; width:68%; padding-left:2%;" data="""+str(self.cardsender_entry)+"""></object></td></tr></table>
 <h4 style="">Cards:</h4><hr>
-<div style=""><object style="vertical-align: middle; width: 100%" data="""+str(self.larger_cards_button)+"""></object></div>
-<table style="width: 100%"><tr><td><object style="vertical-align: middle; width:100%" data="""+str(self.python_card_button)+"""></object></td><td><object style="vertical-align: middle; width:100%" data="""+str(self.traditional_card_button)+"""></object></td></tr></table></div>
+<div style=""><object allowscrolling style="vertical-align: middle; width: 100%" data="""+str(self.larger_cards_button)+"""></object></div>
+<table style="width: 100%"><tr><td><object allowscrolling style="vertical-align: middle; width:100%" data="""+str(self.python_card_button)+"""></object></td><td><object allowscrolling style="vertical-align: middle; width:100%" data="""+str(self.traditional_card_button)+"""></object></td></tr></table></div>
 <hr style="">
-<table style="width: 100%"><tr><td><span style="vertical-align: middle;">Canvas background color:</span></td><td style="width: 60%"><object style="vertical-align: middle; width:100%" data="""+str(self.color_entry)+"""></object></td></tr></table>
+<table style="width: 100%"><tr><td><span style="vertical-align: middle;">Canvas background color:</span></td><td style="width: 60%"><object allowscrolling style="vertical-align: middle; width:100%" data="""+str(self.color_entry)+"""></object></td></tr></table>
 <hr style="margin-top: 10px">
-<div style=""><object style="vertical-align: middle; width: 100%" data="""+str(self.continuous_points_button)+"""></object></div>
-<table style="width: 100%"><tr><td><object style="vertical-align: middle; width:100%" data="""+str(self.header_button)+"""></object></td><td><object style="vertical-align: middle; width:100%" data="""+str(self.footer_button)+"""></object></td></tr></table></div>
+<div style=""><object allowscrolling style="vertical-align: middle; width: 100%" data="""+str(self.continuous_points_button)+"""></object></div>
+<table style="width: 100%"><tr><td><object allowscrolling style="vertical-align: middle; width:100%" data="""+str(self.header_button)+"""></object></td><td><object allowscrolling style="vertical-align: middle; width:100%" data="""+str(self.footer_button)+"""></object></td></tr></table></div>
 </body>
 """)
         self.text.grid(row=0, column=0, sticky="nsew", columnspan=3)
@@ -3901,4 +3899,7 @@ def main():
 
 
 if __name__ == "__main__":
+    if os.name == "nt":
+        import ctypes
+        ctypes.windll.shcore.SetProcessDpiAwareness(1)
     main()
