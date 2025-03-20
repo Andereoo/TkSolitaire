@@ -417,7 +417,6 @@ class SolitaireGameFrame(tk.Frame):
         self.height = self.max_height
         self.settings = None
         self.information = None    
-        self.current_side_panel = None    
         self.cardsender_may_continue = True
 
         os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -619,33 +618,26 @@ class SolitaireGameFrame(tk.Frame):
     def open_information(self, *args):
         if self.move_flag:
             return
-        self.initiate_game(close_popups=False)# close_popup()#continue_settings()
-        if self.settings:
-            if self.settings.winfo_ismapped() and self.settings.winfo_manager() == "grid":
-                self.settings.place(x=self.canvas.winfo_width(), y=self.canvas.winfo_y(), width=500, height=self.canvas.winfo_height())
+        self.initiate_game(close_popups=False)# close_popup()#continue_settings()            
         if not self.information:
             self.information = information = Information(self, width=500, height=self.canvas.winfo_height())
             information.place(x=self.canvas.winfo_width(), y=self.canvas.winfo_y())
             information.update()
             information.bind("<<InformationClose>>", self.close_information)
         else:
-            if self.settings and self.information.winfo_ismapped() and self.settings.winfo_ismapped() and self.information != self.current_side_panel:
-                self.current_side_panel = self.information
-                self.information.lift()
-                return
             if self.information.winfo_ismapped():
                 self.close_information()
                 return
             self.information.config(width=500, height=self.canvas.winfo_height())
             self.information.place(x=self.canvas.winfo_width(), y=self.canvas.winfo_y())
-        self.current_side_panel = self.information
+        if self.settings and self.settings.winfo_ismapped():
+            self.close_settings()
         self.information.lift()
         self.fade_in(self.information, 0)
         self.info_button.toggle()
 
-        if (self.settings and not self.settings.winfo_ismapped()) or not self.settings:
-            self.create_rectangle(0, 0, 2000, 2000, fill="black", alpha=.6, tag="cover")
-            self.canvas.config(state="disabled")
+        self.create_rectangle(0, 0, 2000, 2000, fill="black", alpha=.6, tag="cover")
+        self.canvas.config(state="disabled")
         
     def close_information(self, *args, num=500):
         if self.information:
@@ -653,19 +645,14 @@ class SolitaireGameFrame(tk.Frame):
                 self.information.place(x=self.canvas.winfo_width(), y=self.canvas.winfo_y(), width=500, height=self.canvas.winfo_height())
                 self.information.update()
             self.fade_out(self.information, num)
-            if (self.settings and not self.settings.winfo_ismapped()) or not self.settings:
-                self.canvas.delete("cover")
-                self.canvas.config(state="normal")
+            self.canvas.delete("cover")
+            self.canvas.config(state="normal")
             self.info_button.untoggle()
 
     def open_settings(self, *args):
         if self.move_flag:
             return
         self.initiate_game(close_popups=False)#close_popup()#continue_settings()
-        if self.information:
-            if self.information.winfo_ismapped() and self.information.winfo_manager() == "grid":
-                self.information.place(x=self.canvas.winfo_width(), y=self.canvas.winfo_y(), width=500, height=self.canvas.winfo_height())
-                self.information.update()
         if not self.settings:
             self.settings = settings = Settings(self, width=500, height=self.canvas.winfo_height())
             settings.place(x=self.canvas.winfo_width(), y=self.canvas.winfo_y())
@@ -673,24 +660,20 @@ class SolitaireGameFrame(tk.Frame):
             settings.bind("<<SettingsClose>>", self.close_settings)
             settings.bind("<<SettingsSaved>>", self.continue_settings)
         else:
-            if self.information and self.settings.winfo_ismapped() and self.information.winfo_ismapped() and self.settings != self.current_side_panel:
-                self.current_side_panel = self.settings
-                self.settings.lift()
-                return
             if self.settings.winfo_ismapped():
                 self.close_settings()
                 return
             self.settings.config(width=500, height=self.canvas.winfo_height())
             self.settings.place(x=self.canvas.winfo_width(), y=self.canvas.winfo_y())
-        self.current_side_panel = self.settings
+        if self.information and self.information.winfo_ismapped():
+            self.close_information()
         self.settings.lift()
         self.fade_in(self.settings, 0)
         self.settings_button.toggle()
         self.headerless_settings_button.toggle()
 
-        if (self.information and not self.information.winfo_ismapped()) or not self.information:
-            self.create_rectangle(0, 0, 2000, 2000, fill="black", alpha=.6, tag="cover")
-            self.canvas.config(state="disabled")
+        self.create_rectangle(0, 0, 2000, 2000, fill="black", alpha=.6, tag="cover")
+        self.canvas.config(state="disabled")
         
     def close_popup(self):
         if self.information:
@@ -711,9 +694,8 @@ class SolitaireGameFrame(tk.Frame):
             settings.save()#delete_window()#destroy()
             settings.grid_propagate(0)
             self.fade_out(settings, num)
-            if (self.information and not self.information.winfo_ismapped()) or not self.information:
-                self.canvas.delete("cover")
-                self.canvas.config(state="normal")
+            self.canvas.delete("cover")
+            self.canvas.config(state="normal")
             self.settings_button.untoggle()
             self.headerless_settings_button.untoggle()
 
@@ -3408,7 +3390,7 @@ class Information(tk.Frame):
         self.grid_propagate(0)
         self.text.grid_propagate(0)
         self.text.load_html("""<style>body {background-color: #4f4f4f; color: #e3e3e3} a {color: #19beff} h4 {margin-bottom: -5px} hr {border-bottom-width: 0; border-top-width: 1px; border-color: grey} div {text-align: center} div p {margin-bottom: 10px}</style><body>
-                       <div><p style="font-size: 12px; margin-top: 0px; color:grey; margin-bottom:0">TkSolitaire V.1.10.0 (experimental)</p>
+                       <div><p style="font-size: 12px; margin-top: 0px; color:grey; margin-bottom:0">TkSolitaire V.1.8.0</p>
                             <a style="font-size: 12px" href="https://github.com/Andereoo/TkSolitaire/">https://github.com/Andereoo/TkSolitaire/</a>
                             <p>An embeddable and accessable solitaire game written in Tkinter and Python 3</p>
                             </div>
@@ -3658,7 +3640,7 @@ class Settings(tk.Frame):
     def grid_all(self):
         self.grid_rowconfigure(0, weight=1)
         self.text.load_html("""<style>span, object {margin-top: 5px; margin-bottom: 5px} body {background-color: #4f4f4f; color: #e3e3e3; cursor: default} a {color: #19beff} h4 {margin-bottom: -5px} hr {margin-bottom: 10px; border-bottom-width: 0; border-top-width: 1px; border-color: grey} div p {margin-bottom: 10px}</style><body>
-                       <div style="text-align: center"><p style="font-size: 12px; margin-top: 0px; color:grey; margin-bottom:0">TkSolitaire V.1.10.0 (experimental)</p>
+                       <div style="text-align: center"><p style="font-size: 12px; margin-top: 0px; color:grey; margin-bottom:0">TkSolitaire V.1.8.0</p>
                             </div>
 <h4>Game:</h4><hr>
 <table style="width: 100%"><tr><td><span style="vertical-align: middle;">Move type:</span></td><td style="width: 60%"><object allowscrolling style="vertical-align: middle; width:100%" data="""+str(self.movetype_chooser)+"""></object></td></tr>
