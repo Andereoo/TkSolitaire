@@ -93,7 +93,7 @@ class HoverButton(tk.Button):
             if kwargs["state"] == "disabled":
                 kwargs["cursor"] = disabledcursor
         else:
-            self.default_cursor = "hand2"
+            self.default_cursor = ""
         tk.Label.__init__(self, parent, **kwargs)
         self.default_highlight = self["highlightbackground"]
         self.default_background = self["background"]
@@ -505,7 +505,7 @@ class SolitaireGameFrame(tk.Frame):
 
         self.header = header = OptionBar(self, invert=True, manager="grid")
         button_settings = {"movetype": self.movetype, "ttbackground": "#1c1c1b", "ttforeground": "white",
-                           "ttfont": ("Verdana", "10", "normal"), "cursor": "hand2", "relief": "flat",
+                           "ttfont": ("Verdana", "10", "normal"), "cursor": "", "relief": "flat",
                            "bg": "#1c1a1a", "activebackground": "#4f4a4a", "highlightbackground": "#1c1a1a",
                            "clickedbackground": "#2e2b2b", "highlightthickness": 3}
         self.new_game_button = new_game_button = HoverButton(
@@ -561,7 +561,7 @@ class SolitaireGameFrame(tk.Frame):
                                                                                    ttforeground="white", ttfont=("Verdana", "10", "normal"),
                                                                                    bg=self.canvas["bg"], activebackground=self.generate_altered_colour(
                                                                                        self.canvas["bg"]),
-                                                                                   highlightthickness=3, cursor="hand2",
+                                                                                   highlightthickness=3, cursor="",
                                                                                    highlightbackground="#103b0a", clickedbackground=self.generate_altered_colour(self.canvas["bg"]), command=self.open_settings,
                                                                                    relief="flat", image=self.convert_pictures("settings.png", main=False))
 
@@ -2958,11 +2958,11 @@ class CustomGameMaker(tk.Toplevel):
         self.redeals_entry = tk.Spinbox(self, from_=1, to=1000000, increment=1, width=30, textvariable=self.total_redeals, relief="flat", highlightbackground="#e3e3e3",
                                           highlightthickness=1, bg="#cccaca", buttonbackground="#cccacc", disabledbackground="#cccaca", disabledforeground="grey")
         self.bottom_frame = tk.Frame(self, background="#4f4f4f")
-        self.save_button = tk.Button(self.bottom_frame, text="Save", cursor="hand2", relief="solid", borderwidth=1, padx=10, pady=1, fg="#e3e3e3", activeforeground="#e3e3e3",
+        self.save_button = tk.Button(self.bottom_frame, text="Save", relief="solid", borderwidth=1, padx=10, pady=1, fg="#e3e3e3", activeforeground="#e3e3e3",
                                      command=self.save, bg="#4f4f4f", activebackground="#706c6c")
-        self.reset_button = tk.Button(self.bottom_frame, text="Reset", cursor="hand2", relief="solid", borderwidth=1, padx=10, pady=1, fg="#e3e3e3", activeforeground="#e3e3e3",
+        self.reset_button = tk.Button(self.bottom_frame, text="Reset", relief="solid", borderwidth=1, padx=10, pady=1, fg="#e3e3e3", activeforeground="#e3e3e3",
                                       command=self.reset_all, bg="#4f4f4f", activebackground="#706c6c")
-        self.cancel_button = tk.Button(self.bottom_frame, text="Cancel", cursor="hand2", relief="solid", borderwidth=1, padx=10, pady=1, fg="#e3e3e3", activeforeground="#e3e3e3",
+        self.cancel_button = tk.Button(self.bottom_frame, text="Cancel", relief="solid", borderwidth=1, padx=10, pady=1, fg="#e3e3e3", activeforeground="#e3e3e3",
                                        command=lambda: self.destroy(), bg="#4f4f4f", activebackground="#706c6c")
 
     def config_widgets(self):
@@ -3250,7 +3250,7 @@ class Combobox(tk.Frame):
         self.entry.config(highlightthickness=self.highlightthickness)
 
         self.label = label = tk.Label(
-            self, image=self.label_image, cursor="hand2", **label_args)
+            self, image=self.label_image, **label_args)
         label.pack(side="right", fill="both")
 
         try:
@@ -3423,7 +3423,7 @@ class Information(tk.Frame):
 </body>
 """)
         self.text.grid(row=0, column=0, sticky="nsew")
-        closebtn = tk.Button(self, text="Close", relief="solid", borderwidth=1, padx=10, pady=1, cursor="hand2", command=self.close, fg="#e3e3e3", activeforeground="#e3e3e3", bg="#4f4f4f", activebackground="#706c6c")
+        closebtn = tk.Button(self, text="Close", relief="solid", borderwidth=1, padx=10, pady=1, command=self.close, fg="#e3e3e3", activeforeground="#e3e3e3", bg="#4f4f4f", activebackground="#706c6c")
         closebtn.grid(row=1, column=0, padx=8, pady=7, sticky="e")
         closebtn.bind("<Enter>", self.enter_button)
         closebtn.bind("<Leave>", self.leave_button)
@@ -3554,8 +3554,8 @@ class Settings(tk.Frame):
 
         #self.color_entry_label = tk.Label(self, fg="#e3e3e3",
         #                                  text="Canvas background color:", bg="#4f4f4f", fg="#e3e3e3")
-        self.color_entry = tk.Entry(self, textvariable=self.canvas_color_var, state='disabled', relief="flat", highlightbackground="#000000", highlightthickness=1,
-                                    bg=self.canvas_color_var.get(), disabledbackground=self.canvas_color_var.get(), disabledforeground=self.generate_altered_colour(self.canvas_color_var.get()), cursor="hand2")
+        self.color_entry = tk.Entry(self, textvariable=self.canvas_color_var, state='disabled', relief="flat", highlightbackground="#000000", highlightthickness=1, cursor="arrow",
+                                    bg=self.canvas_color_var.get(), disabledbackground=self.canvas_color_var.get(), disabledforeground=self.generate_altered_colour(self.canvas_color_var.get()))
 
         self.continuous_points_button = tk.Checkbutton(self, highlightthickness=0, selectcolor="#4f4f4f",
                                                        text="Continuous points (Vegas mode only)", variable=self.continuous_points_button_var, anchor="w", bg="#4f4f4f", fg="#e3e3e3", activebackground="#706c6c")
@@ -3564,9 +3564,9 @@ class Settings(tk.Frame):
                                             text="Show header", variable=self.header_button_var, highlightthickness=0, anchor="w", bg="#4f4f4f", activebackground="#706c6c")
         self.footer_button = tk.Checkbutton(self, fg="#e3e3e3", activeforeground="#e3e3e3", selectcolor="#4f4f4f",
                                             text="Show footer", variable=self.footer_button_var, highlightthickness=0, anchor="w", bg="#4f4f4f", activebackground="#706c6c")
-        self.save_button = tk.Button(self, text="Save", cursor="hand2", relief="solid", borderwidth=1, padx=10, pady=1, fg="#e3e3e3", activeforeground="#e3e3e3",
+        self.save_button = tk.Button(self, text="Save", relief="solid", borderwidth=1, padx=10, pady=1, fg="#e3e3e3", activeforeground="#e3e3e3",
                                      command=self.close, bg="#4f4f4f", activebackground="#706c6c")
-        self.reset_button = tk.Button(self, text="Reset", cursor="hand2", relief="solid", borderwidth=1, padx=10, pady=1, fg="#e3e3e3", activeforeground="#e3e3e3",
+        self.reset_button = tk.Button(self, text="Reset", relief="solid", borderwidth=1, padx=10, pady=1, fg="#e3e3e3", activeforeground="#e3e3e3",
                                       command=self.reset_all, bg="#4f4f4f", activebackground="#706c6c")
 
     def config_widgets(self):
