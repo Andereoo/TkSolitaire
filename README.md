@@ -2,16 +2,18 @@
 
 # TkSolitaire
 
-TkSolitaire is an accessible and embeddable solitaire game application written in Tkinter.
+**TkSolitaire is an accessible and embeddable solitaire game application written in Tkinter.**
 
-**Accessability:**
+## Accessibility:
+
 TkSolitaire comes bundled with accessibility options, making it easier for the elderly or those with hand injuries to play solitaire. They include:
 * An auto-clicker
 * A game finisher
 * An option to use larger cards
 
 
-**Installation:**
+## Installation:
+
 Windows users can download the installer from the releases page. Alternatively, the TkSolitaire source code can also be downloaded and run using Python on any OS.
 TkSolitaire can be embedded into a Tkinter app:
 
@@ -29,6 +31,6 @@ solitaire_frame.bind("<<WindowClose>>", lambda e: root.destroy())
 root.mainloop()
 ```
  
-**Screenshots:**
+## Screenshots:
 
 ![Alt text](/resources/Screenshots/TkSolitaire-Ubuntu18-Screenshot.png?raw=true "TkSolitaire")
